@@ -22,8 +22,6 @@ export function Footer() {
             <h4 className="mb-3 text-sm font-semibold text-foreground">Plataforma</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link to="/explorar" className="transition-colors hover:text-primary">Explorar</Link></li>
-              <li><Link to="/decoradores" className="transition-colors hover:text-primary">Decoradores</Link></li>
-              <li><Link to="/blog" className="transition-colors hover:text-primary">Blog</Link></li>
             </ul>
           </div>
 

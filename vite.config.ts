@@ -5,6 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Cache fora de node_modules evita EPERM no Windows (OneDrive/lock)
+  cacheDir: path.resolve(__dirname, ".vite"),
   server: {
     host: "::",
     port: 8080,

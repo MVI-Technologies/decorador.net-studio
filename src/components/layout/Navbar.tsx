@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "Explorar", href: "/explorar" },
-  { label: "Decoradores", href: "/decoradores" },
-  { label: "Blog", href: "/blog" },
 ];
 
 export function Navbar() {
