@@ -32,20 +32,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshMe = useCallback(async () => {
     const token = getStoredToken();
+    console.log('[AuthContext] refreshMe called, token exists:', !!token);
     if (!token) {
       setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
       return;
     }
     try {
-      const { data } = await api.get<AuthMeResponse>("/auth/me");
+      console.log('[AuthContext] Fetching /auth/me...');
+      const response = await api.get("/auth/me");
+      console.log('[AuthContext] /auth/me response:', response.data);
+      
+      // Backend wraps response in { statusCode, message, data: { user, clientProfile, professionalProfile } }
+      const { user, clientProfile, professionalProfile } = response.data.data || response.data;
+      
+      console.log('[AuthContext] /auth/me success:', { user });
       setState({
-        user: data.user,
-        clientProfile: data.clientProfile ?? null,
-        professionalProfile: data.professionalProfile ?? null,
+        user,
+        clientProfile: clientProfile ?? null,
+        professionalProfile: professionalProfile ?? null,
         loading: false,
         isAuthenticated: true,
       });
-    } catch {
+    } catch (error) {
+      console.error('[AuthContext] /auth/me failed:', error);
       clearStoredToken();
       setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
     }
@@ -69,16 +78,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const { data } = await api.post<AuthResponse>("/auth/signin", { email, password });
-      setStoredToken(data.accessToken);
+      console.log('[AuthContext] Starting login...');
+      const response = await api.post("/auth/signin", { email, password });
+      console.log('[AuthContext] Login response:', response.data);
+      
+      // Backend wraps response in { statusCode, message, data: { user, accessToken } }
+      const { user, accessToken } = response.data.data;
+      
+      console.log('[AuthContext] Extracted:', { user, hasToken: !!accessToken });
+      setStoredToken(accessToken);
+      console.log('[AuthContext] Token stored in localStorage');
       setState({
-        user: data.user,
+        user,
         clientProfile: null,
         professionalProfile: null,
         loading: false,
         isAuthenticated: true,
       });
+      console.log('[AuthContext] Calling refreshMe...');
       await refreshMe();
+      console.log('[AuthContext] Navigating to /app');
       navigate("/app", { replace: true });
     },
     [navigate, refreshMe]
@@ -86,10 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = useCallback(
     async (data: { name: string; email: string; password: string; role: "CLIENT" | "PROFESSIONAL"; phone?: string }) => {
-      const res = await api.post<AuthResponse>("/auth/signup", data);
-      setStoredToken(res.data.accessToken);
+      const response = await api.post("/auth/signup", data);
+      
+      // Backend wraps response in { statusCode, message, data: { user, accessToken } }
+      const { user, accessToken } = response.data.data;
+      
+      setStoredToken(accessToken);
       setState({
-        user: res.data.user,
+        user,
         clientProfile: null,
         professionalProfile: null,
         loading: false,
