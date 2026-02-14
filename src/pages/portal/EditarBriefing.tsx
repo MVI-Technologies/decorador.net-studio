@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Form,
@@ -17,11 +16,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Project } from "@/types/api";
 
 const roomTypes = ["Sala", "Quarto", "Cozinha", "Banheiro", "Área externa", "Escritório", "Outro"];
 const SEM_ESTILOS = "Sem estilos";
@@ -30,8 +31,8 @@ const styleOptions = [SEM_ESTILOS, "Moderno", "Minimalista", "Rústico", "Indust
 const schema = z.object({
   projectTitle: z.string().min(2, "Título obrigatório"),
   roomType: z.string().optional(),
-  roomSize: z.string().optional(),
-  budget: z.string().optional(),
+  roomSize: z.union([z.string(), z.number()]).optional().transform((v) => (v == null || v === "" ? "" : String(v))),
+  budget: z.union([z.string(), z.number()]).optional().transform((v) => (v == null || v === "" ? "" : String(v))),
   description: z.string().optional(),
   stylePreferences: z.array(z.string()).optional(),
   requirements: z.string().optional(),
@@ -40,18 +41,24 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const checklistItems = [
-  "Tipo de cômodo definido",
-  "Metragem informada",
-  "Orçamento indicado",
-  "Estilo preferido escolhido",
-  "Descrição do ambiente",
-];
+const EDITABLE_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING"];
 
-export default function NovoBriefing() {
+export default function EditarBriefing() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+
+  const { data: project, isLoading } = useQuery({
+    queryKey: ["project", id],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${id}`);
+      const payload = res.data?.data ?? res.data ?? {};
+      return (payload?.project ?? payload) as Project;
+    },
+    enabled: !!id,
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -66,6 +73,35 @@ export default function NovoBriefing() {
       deadline: "",
     },
   });
+
+  useEffect(() => {
+    if (project?.briefing) {
+      const b = project.briefing as { projectTitle?: string; roomType?: string; roomSize?: string; budget?: string; description?: string; stylePreferences?: string[]; requirements?: string; deadline?: string };
+      const styles = Array.isArray(b.stylePreferences) && b.stylePreferences.length > 0 ? b.stylePreferences : [SEM_ESTILOS];
+      setSelectedStyles(styles);
+      form.reset({
+        projectTitle: b.projectTitle ?? project.title ?? "",
+        roomType: b.roomType ?? "",
+        roomSize: b.roomSize != null ? String(b.roomSize) : "",
+        budget: b.budget != null ? String(b.budget) : "",
+        description: b.description ?? "",
+        stylePreferences: styles,
+        requirements: b.requirements ?? "",
+        deadline: b.deadline ?? "",
+      });
+    } else if (project) {
+      form.reset({
+        projectTitle: project.title ?? "",
+        roomType: "",
+        roomSize: "",
+        budget: "",
+        description: "",
+        stylePreferences: [],
+        requirements: "",
+        deadline: "",
+      });
+    }
+  }, [project, form]);
 
   const roomType = form.watch("roomType");
   const roomSize = form.watch("roomSize");
@@ -98,33 +134,85 @@ export default function NovoBriefing() {
     ? []
     : selectedStyles;
 
-  async function onSubmit(values: FormValues) {
-    setLoading(true);
-    try {
+  const patchMutation = useMutation({
+    mutationFn: async (values: FormValues) => {
+      const briefingId = (project?.briefing as { id?: string })?.id ?? project?.id ?? id;
+      if (!briefingId) throw new Error("Briefing não encontrado");
       const budgetNum = values.budget ? parseInt(String(values.budget), 10) : undefined;
-      const res = await api.post("/briefings", {
+      await api.patch(`/briefings/${briefingId}`, {
         ...values,
         budget: budgetNum !== undefined && !Number.isNaN(budgetNum) ? budgetNum : undefined,
         stylePreferences: stylesForApi,
       });
-      const payload = res.data?.data ?? res.data ?? {};
-      const project = payload?.project ?? payload;
-      const projectId = project?.id ?? (project as { id?: string })?.id;
-      if (!projectId) throw new Error("Resposta inválida: projeto sem ID");
-      toast.success("Briefing criado! Redirecionando ao match.");
-      navigate(`/app/projetos/${projectId}/match`);
-    } catch (err) {
-      toast.error(getApiErrorMessage(err));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Briefing atualizado! Buscando decoradores.");
+      navigate(`/app/projetos/${id}/match`);
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
+  async function onSubmit(values: FormValues) {
+    setLoading(true);
+    try {
+      await patchMutation.mutateAsync({
+        ...values,
+        stylePreferences: stylesForApi,
+      });
     } finally {
       setLoading(false);
     }
   }
 
+  const canEdit = project && EDITABLE_STATUSES.includes(project.status);
+
+  if (!id) {
+    return (
+      <div className="container py-8">
+        <p className="text-muted-foreground">ID não informado.</p>
+        <Button asChild variant="outline" className="mt-4 rounded-full">
+          <Link to="/app/projetos">Voltar</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading || !project) {
+    return (
+      <div className="container py-8">
+        <div className="h-8 w-48 rounded bg-muted animate-pulse" />
+        <div className="mt-6 h-64 rounded bg-muted animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="container py-8">
+        <p className="text-muted-foreground">Este briefing não pode ser editado.</p>
+        <Button asChild variant="outline" className="mt-4 rounded-full">
+          <Link to={`/app/projetos/${id}`}>Voltar ao projeto</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-8">
+      <Button asChild variant="ghost" size="sm" className="mb-4 rounded-full -ml-2">
+        <Link to={`/app/projetos/${id}`} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao projeto
+        </Link>
+      </Button>
+
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-display-md text-foreground">Novo briefing</h1>
-        <p className="mt-2 text-muted-foreground">Conte o que você precisa para encontrarmos o decorador ideal.</p>
+        <h1 className="text-display-md text-foreground">Editar briefing</h1>
+        <p className="mt-2 text-muted-foreground">
+          Altere os dados do briefing para encontrar o decorador ideal.
+        </p>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -244,8 +332,13 @@ export default function NovoBriefing() {
                   )}
                 />
 
-                <Button type="submit" className="rounded-full shadow-brand px-8" size="lg" disabled={loading}>
-                  {loading ? "Criando…" : "Criar briefing e buscar decoradores"}
+                <Button
+                  type="submit"
+                  className="rounded-full shadow-brand px-8"
+                  size="lg"
+                  disabled={loading || patchMutation.isPending}
+                >
+                  {loading || patchMutation.isPending ? "Salvando…" : "Salvar e buscar decoradores"}
                 </Button>
               </form>
             </Form>
@@ -257,14 +350,8 @@ export default function NovoBriefing() {
                 <h3 className="font-semibold text-lg">Projeto completo</h3>
                 <p className="mt-1 text-sm opacity-90">Checklist do briefing</p>
                 <ul className="mt-6 space-y-3">
-                  {checklistItems.map((item, i) => {
-                    const done = [
-                      !!roomType,
-                      !!roomSize,
-                      !!budget,
-                      selectedStyles.length > 0,
-                      !!description,
-                    ][i];
+                  {["Tipo de cômodo definido", "Metragem informada", "Orçamento indicado", "Estilo preferido escolhido", "Descrição do ambiente"].map((item, i) => {
+                    const done = [!!roomType, !!roomSize, !!budget, selectedStyles.length > 0, !!description][i];
                     return (
                       <li key={item} className="flex items-center gap-2 text-sm">
                         {done ? <Check className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 rounded-full border-2 border-white/50" />}
@@ -274,7 +361,7 @@ export default function NovoBriefing() {
                   })}
                 </ul>
                 <p className="mt-4 text-sm opacity-80">
-                  {checkedCount} de {checklistItems.length} itens
+                  {checkedCount} de 5 itens
                 </p>
               </div>
             </div>

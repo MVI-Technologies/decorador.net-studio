@@ -40,8 +40,9 @@ export default function ProjectDetail() {
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
-      const res = await api.get<Project>(`/projects/${id}`);
-      return res.data;
+      const res = await api.get(`/projects/${id}`);
+      const payload = res.data?.data ?? res.data ?? {};
+      return (payload?.project ?? payload) as Project;
     },
     enabled: !!id,
   });
@@ -157,7 +158,7 @@ export default function ProjectDetail() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-display-md text-foreground">{project.title}</h1>
-          <Badge variant="secondary" className="mt-2">{projectStatusLabel(status)}</Badge>
+          <Badge variant="secondary" className="mt-2">{projectStatusLabel[status] ?? status}</Badge>
         </div>
       </div>
 

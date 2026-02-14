@@ -1,5 +1,11 @@
 import axios, { type AxiosError } from "axios";
 
+declare module "axios" {
+  interface AxiosRequestConfig {
+    skipAuthRedirect?: boolean;
+  }
+}
+
 const baseURL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
 
 export const api = axios.create({
@@ -8,6 +14,7 @@ export const api = axios.create({
 });
 
 const TOKEN_KEY = "decorador_access_token";
+const USER_KEY = "decorador_user_bootstrap";
 
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -19,11 +26,35 @@ export function setStoredToken(token: string): void {
 
 export function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+}
+
+export function setBootstrapUser(user: { id: string; email: string; name: string; role: string }): void {
+  try {
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // ignore
+  }
+}
+
+export function getBootstrapUser(): { id: string; email: string; name: string; role: string } | null {
+  try {
+    const raw = sessionStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    return u?.id && u?.email ? u : null;
+  } catch {
+    return null;
+  }
 }
 
 api.interceptors.request.use((config) => {
   const token = getStoredToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // FormData: não enviar Content-Type para o browser definir multipart/form-data com boundary
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
   return config;
 });
 
@@ -37,8 +68,12 @@ api.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ message?: string; statusCode?: number }>) => {
     if (err.response?.status === 401) {
-      clearStoredToken();
-      onUnauthorized?.();
+      // Não executar logout/redirect se a requisição pediu para pular (ex: /auth/me durante login)
+      const skipAuthRedirect = err.config?.skipAuthRedirect;
+      if (!skipAuthRedirect) {
+        clearStoredToken();
+        onUnauthorized?.();
+      }
     }
     return Promise.reject(err);
   }

@@ -41,7 +41,8 @@ export default function Login() {
     try {
       await login(values.email, values.password);
       toast.success("Login realizado com sucesso!");
-      // Navigation is handled by AuthContext.login()
+      const target = (from && from !== "/" && from !== "/login") ? from : "/app";
+      window.location.replace(target);
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     } finally {

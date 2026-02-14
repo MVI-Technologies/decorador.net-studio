@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, clearStoredToken, getStoredToken, setStoredToken, setOnUnauthorized, getApiErrorMessage } from "@/lib/api";
+import { api, clearStoredToken, getStoredToken, setStoredToken, setBootstrapUser, getBootstrapUser, setOnUnauthorized, getApiErrorMessage } from "@/lib/api";
 import type { AuthMeResponse, AuthResponse, Role, User, ClientProfile, ProfessionalProfile } from "@/types/api";
 
 interface AuthState {
@@ -16,6 +16,20 @@ interface AuthContextValue extends AuthState {
   signup: (data: { name: string; email: string; password: string; role: "CLIENT" | "PROFESSIONAL"; phone?: string }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  updateUser: (partial: Partial<User>) => void;
+}
+
+/** Normaliza user da API (camelCase ou snake_case) */
+function normalizeUser(raw: Record<string, unknown>): User {
+  const u = raw as Record<string, unknown>;
+  return {
+    id: String(u.id ?? ""),
+    email: String(u.email ?? ""),
+    name: String(u.name ?? ""),
+    role: (u.role as Role) ?? "CLIENT",
+    phone: (u.phone ?? u.phoneNumber ?? u.telefone ?? u.phone_number) as string | undefined,
+    avatarUrl: (u.avatarUrl ?? u.avatar_url) as string | undefined,
+  };
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,33 +44,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   });
 
-  const refreshMe = useCallback(async () => {
+  const refreshMe = useCallback(async (opts?: { clearTokenOnError?: boolean }) => {
+    const clearOnError = opts?.clearTokenOnError ?? true;
     const token = getStoredToken();
-    console.log('[AuthContext] refreshMe called, token exists:', !!token);
     if (!token) {
       setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
       return;
     }
     try {
-      console.log('[AuthContext] Fetching /auth/me...');
-      const response = await api.get("/auth/me");
-      console.log('[AuthContext] /auth/me response:', response.data);
-      
-      // Backend wraps response in { statusCode, message, data: { user, clientProfile, professionalProfile } }
-      const { user, clientProfile, professionalProfile } = response.data.data || response.data;
-      
-      console.log('[AuthContext] /auth/me success:', { user });
-      setState({
-        user,
-        clientProfile: clientProfile ?? null,
-        professionalProfile: professionalProfile ?? null,
-        loading: false,
-        isAuthenticated: true,
-      });
+      const response = await api.get("/auth/me", { skipAuthRedirect: true });
+      const payload = response.data?.data ?? response.data ?? {};
+      const rawUser = payload?.user ?? (payload?.id ? payload : null);
+      const user = rawUser ? normalizeUser(rawUser as Record<string, unknown>) : null;
+      const clientProfile = payload?.clientProfile ?? null;
+      const professionalProfile = payload?.professionalProfile ?? null;
+      if (user) {
+        setState({
+          user,
+          clientProfile: clientProfile ?? null,
+          professionalProfile: professionalProfile ?? null,
+          loading: false,
+          isAuthenticated: true,
+        });
+      } else if (clearOnError) {
+        clearStoredToken();
+        setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
+      } else {
+        setState((s) => ({ ...s, loading: false }));
+      }
     } catch (error) {
-      console.error('[AuthContext] /auth/me failed:', error);
-      clearStoredToken();
-      setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
+      if (clearOnError) {
+        clearStoredToken();
+        setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
+      } else {
+        setState((s) => ({ ...s, loading: false }));
+      }
     }
   }, []);
 
@@ -69,25 +91,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [navigate]);
 
   useEffect(() => {
-    if (getStoredToken()) {
-      refreshMe();
-    } else {
+    const token = getStoredToken();
+    if (!token) {
       setState((s) => ({ ...s, loading: false }));
+      return;
     }
+    // Usar user do bootstrap (sessionStorage) imediatamente — evita flash de redirect
+    const bootstrap = getBootstrapUser();
+    if (bootstrap) {
+      setState((s) => ({
+        ...s,
+        user: bootstrap,
+        loading: false,
+        isAuthenticated: true,
+      }));
+    }
+    // Buscar perfil completo em background
+    refreshMe({ clearTokenOnError: false });
   }, [refreshMe]);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      console.log('[AuthContext] Starting login...');
       const response = await api.post("/auth/signin", { email, password });
-      console.log('[AuthContext] Login response:', response.data);
-      
-      // Backend wraps response in { statusCode, message, data: { user, accessToken } }
-      const { user, accessToken } = response.data.data;
-      
-      console.log('[AuthContext] Extracted:', { user, hasToken: !!accessToken });
+      const payload = response.data?.data ?? response.data;
+      const { user, accessToken } = payload;
+      if (!user || !accessToken) throw new Error("Resposta de login inválida");
       setStoredToken(accessToken);
-      console.log('[AuthContext] Token stored in localStorage');
+      setBootstrapUser(user);
       setState({
         user,
         clientProfile: null,
@@ -95,33 +125,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading: false,
         isAuthenticated: true,
       });
-      console.log('[AuthContext] Calling refreshMe...');
-      await refreshMe();
-      console.log('[AuthContext] Navigating to /app');
-      navigate("/app", { replace: true });
+      await refreshMe({ clearTokenOnError: false });
     },
-    [navigate, refreshMe]
+    [refreshMe]
   );
 
   const signup = useCallback(
     async (data: { name: string; email: string; password: string; role: "CLIENT" | "PROFESSIONAL"; phone?: string }) => {
-      const response = await api.post("/auth/signup", data);
-      
-      // Backend wraps response in { statusCode, message, data: { user, accessToken } }
-      const { user, accessToken } = response.data.data;
-      
-      setStoredToken(accessToken);
-      setState({
-        user,
-        clientProfile: null,
-        professionalProfile: null,
-        loading: false,
-        isAuthenticated: true,
-      });
-      await refreshMe();
-      navigate("/app", { replace: true });
+      await api.post("/auth/signup", data);
+      // Apenas cria a conta; não faz login. O usuário deve entrar em /login.
     },
-    [navigate, refreshMe]
+    []
   );
 
   const logout = useCallback(() => {
@@ -130,12 +144,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     navigate("/", { replace: true });
   }, [navigate]);
 
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setState((s) =>
+      s.user ? { ...s, user: { ...s.user, ...partial } } : s,
+    );
+  }, []);
+
   const value: AuthContextValue = {
     ...state,
     login,
     signup,
     logout,
     refreshMe,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

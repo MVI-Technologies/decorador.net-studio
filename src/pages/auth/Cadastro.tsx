@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth, getApiErrorMessage } from "@/contexts/AuthContext";
+import { formatPhone } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -62,7 +63,8 @@ export default function Cadastro() {
         role: values.role,
         phone: values.phone || undefined,
       });
-      toast.success("Cadastro realizado com sucesso!");
+      toast.success("Cadastro realizado! Faça login para continuar.");
+      window.location.replace("/login");
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     } finally {
@@ -135,7 +137,11 @@ export default function Cadastro() {
                     <FormItem>
                       <FormLabel>Telefone (opcional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="(11) 99999-9999" {...field} />
+                        <Input
+                          placeholder="(11) 99999-9999"
+                          {...field}
+                          onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

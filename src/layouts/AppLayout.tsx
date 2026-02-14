@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
 
 const clientNav = [
@@ -44,7 +44,6 @@ function getNav(role: Role) {
 
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const nav = user ? getNav(user.role) : [];
 
@@ -98,7 +97,7 @@ export function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                    <AvatarImage src={toAbsoluteAvatarUrl(user?.avatarUrl)} alt={user?.name} referrerPolicy="no-referrer" />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {user?.name?.slice(0, 2).toUpperCase() ?? "?"}
                     </AvatarFallback>

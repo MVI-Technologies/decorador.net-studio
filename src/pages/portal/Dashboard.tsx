@@ -29,7 +29,8 @@ export default function Dashboard() {
     enabled: !!user && (user.role === "CLIENT" || user.role === "PROFESSIONAL"),
   });
 
-  const projects = projectsData?.data ?? [];
+  const raw = projectsData?.data;
+  const projects = Array.isArray(raw) ? raw : (raw?.data ?? []);
 
   if (user?.role === "ADMIN") {
     return <AdminDashboard />;
@@ -68,7 +69,7 @@ export default function Dashboard() {
                         className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
                       >
                         <span className="font-medium text-foreground truncate">{p.title}</span>
-                        <Badge variant="secondary">{projectStatusLabel(p.status)}</Badge>
+                        <Badge variant="secondary">{projectStatusLabel[p.status] ?? p.status}</Badge>
                         <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                       </Link>
                     </li>
@@ -130,7 +131,7 @@ export default function Dashboard() {
                       className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
                     >
                       <span className="font-medium text-foreground truncate">{p.title}</span>
-                      <Badge variant="secondary">{projectStatusLabel(p.status)}</Badge>
+                      <Badge variant="secondary">{projectStatusLabel[p.status] ?? p.status}</Badge>
                       <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                     </Link>
                   </li>

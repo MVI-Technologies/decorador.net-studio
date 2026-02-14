@@ -32,8 +32,9 @@ export default function Match() {
   const { data: project } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
-      const res = await api.get<Project>(`/projects/${id}`);
-      return res.data;
+      const res = await api.get(`/projects/${id}`);
+      const payload = res.data?.data ?? res.data ?? {};
+      return (payload?.project ?? payload) as Project;
     },
     enabled: !!id,
   });
@@ -41,9 +42,10 @@ export default function Match() {
   const { data: matchList = [] } = useQuery({
     queryKey: ["match", id],
     queryFn: async () => {
-      const res = await api.get<{ data?: ProfessionalProfile[] } | ProfessionalProfile[]>(`/projects/${id}/match`);
-      const body = res.data as { data?: ProfessionalProfile[] } | ProfessionalProfile[];
-      return Array.isArray(body) ? body : (body?.data ?? []);
+      const res = await api.get(`/projects/${id}/match`);
+      const payload = res.data?.data ?? res.data ?? {};
+      const arr = Array.isArray(payload) ? payload : (payload?.data ?? payload ?? []);
+      return (Array.isArray(arr) ? arr : []).filter((p): p is ProfessionalProfile => p && typeof p === "object" && !!p.id);
     },
     enabled: !!id && (project?.status === "BRIEFING_SUBMITTED" || project?.status === "MATCHING"),
   });
@@ -86,9 +88,12 @@ export default function Match() {
   return (
     <div className="container py-8">
       <Button asChild variant="ghost" size="sm" className="mb-4 rounded-full -ml-2">
-        <Link to={`/app/projetos/${id}`} className="flex items-center gap-2">
+        <Link
+          to={matchList.length === 0 ? `/app/projetos/${id}/editar-briefing` : `/app/projetos/${id}`}
+          className="flex items-center gap-2"
+        >
           <ArrowLeft className="h-4 w-4" />
-          Voltar ao projeto
+          {matchList.length === 0 ? "Editar briefing" : "Voltar ao projeto"}
         </Link>
       </Button>
 
@@ -101,7 +106,7 @@ export default function Match() {
         <div className="mt-10 rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
           <p className="text-muted-foreground">Nenhum profissional compatível no momento. Tente ajustar o briefing.</p>
           <Button asChild variant="outline" className="mt-4 rounded-full">
-            <Link to={`/app/projetos/${id}`}>Voltar ao projeto</Link>
+            <Link to={`/app/projetos/${id}/editar-briefing`}>Editar briefing</Link>
           </Button>
         </div>
       ) : (

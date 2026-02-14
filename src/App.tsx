@@ -18,6 +18,7 @@ import ExplorarDetail from "./pages/explorar/ExplorarDetail";
 
 import Dashboard from "./pages/portal/Dashboard";
 import NovoBriefing from "./pages/portal/NovoBriefing";
+import EditarBriefing from "./pages/portal/EditarBriefing";
 import ProjectList from "./pages/portal/ProjectList";
 import ProjectDetail from "./pages/portal/ProjectDetail";
 import Match from "./pages/portal/Match";
@@ -40,7 +41,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <Routes>
             {/* Público */}
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="novo-briefing" element={<NovoBriefing />} />
               <Route path="projetos" element={<ProjectList />} />
               <Route path="projetos/:id" element={<ProjectDetail />} />
+              <Route path="projetos/:id/editar-briefing" element={<EditarBriefing />} />
               <Route path="projetos/:id/match" element={<Match />} />
               <Route path="projetos/:id/pagamento" element={<PaymentPix />} />
               <Route path="projetos/:id/pronto" element={<DeliveryResult />} />
