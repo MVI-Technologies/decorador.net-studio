@@ -15,16 +15,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Briefcase, PlusCircle, Pencil, Trash2 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
-import type { Project, PaginatedResponse } from "@/types/api";
+import type { Project, PaginatedResponse, Proposal } from "@/types/api";
 import { projectStatusLabel } from "@/lib/projectStatus";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import axios from "axios";
 
-/** Só permite editar/excluir briefing quando o projeto está em busca de profissional. */
-const EDITABLE_STATUSES = ["MATCHING"];
+/** Permite editar briefing quando briefing enviado ou em busca de profissional. */
+const EDITABLE_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING"];
+
+/** Status até NEGOCIANDO em que o cliente pode excluir o projeto (desde que não haja proposta aceita). */
+const DELETE_PROJECT_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING", "NEGOCIANDO"];
 
 const limit = 10;
 
@@ -40,10 +44,21 @@ export default function ProjectList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Briefing excluído.");
+      queryClient.invalidateQueries({ queryKey: ["professional-projects"] });
+      toast.success("Projeto excluído.");
       setDeleteTarget(null);
     },
-    onError: (err) => toast.error(getApiErrorMessage(err)),
+    onError: (err) => {
+      const msg =
+        axios.isAxiosError(err) && err.response?.status === 400 && err.response?.data?.message
+          ? String(err.response.data.message).trim()
+          : getApiErrorMessage(err);
+      const displayMsg =
+        msg && /proposta\s+aceita|já tem proposta aceita/i.test(msg)
+          ? "Não é possível excluir: este projeto já tem proposta aceita."
+          : msg;
+      toast.error(displayMsg);
+    },
   });
 
   const { data, isLoading } = useQuery({
@@ -63,6 +78,40 @@ export default function ProjectList() {
   const arr = Array.isArray(raw) ? raw : (raw?.data ?? []);
   const projects = Array.isArray(arr) ? arr : [];
   const meta = data?.meta ?? raw?.meta ?? { total: 0, page: 1, limit, totalPages: 0 };
+
+  const projectIdsForProposals = useMemo(
+    () =>
+      user?.role === "CLIENT"
+        ? projects.filter((p) => DELETE_PROJECT_STATUSES.includes(p.status)).map((p) => p.id)
+        : [],
+    [user?.role, projects]
+  );
+
+  const proposalsQueries = useQueries({
+    queries: projectIdsForProposals.map((projectId) => ({
+      queryKey: ["proposals", projectId] as const,
+      queryFn: async (): Promise<Proposal[]> => {
+        const res = await api.get(`/proposals/${projectId}`);
+        const rawList = res.data?.data ?? res.data;
+        return Array.isArray(rawList) ? (rawList as Proposal[]) : [];
+      },
+      enabled: true,
+    })),
+  });
+
+  const hasAcceptedProposalByProjectId = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    projectIdsForProposals.forEach((id, i) => {
+      const list = proposalsQueries[i]?.data ?? [];
+      map[id] = list.some((p) => p.status === "ACCEPTED");
+    });
+    return map;
+  }, [projectIdsForProposals, proposalsQueries]);
+
+  const canDeleteProject = (p: Project) =>
+    user?.role === "CLIENT" &&
+    DELETE_PROJECT_STATUSES.includes(p.status) &&
+    !hasAcceptedProposalByProjectId[p.id];
 
   return (
     <div className="container py-8">
@@ -111,34 +160,51 @@ export default function ProjectList() {
               const canEdit = user?.role === "CLIENT" && EDITABLE_STATUSES.includes(p.status);
               const briefingId = (p.briefing as { id?: string })?.id ?? p.id;
               return (
-                <Card key={p.id} className="overflow-hidden transition-shadow hover:shadow-soft">
+                <Card
+                  key={p.id}
+                  className={`overflow-hidden transition-shadow hover:shadow-soft ${
+                    p.status === "CANCELLED" ? "border-muted bg-muted/30 opacity-90" : ""
+                  }`}
+                >
                   <Link to={`/app/projetos/${p.id}`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-foreground truncate flex-1">{p.title}</h3>
-                        <Badge variant="secondary" className="shrink-0">{projectStatusLabel[p.status] ?? p.status}</Badge>
+                        <Badge
+                          variant={p.status === "CANCELLED" ? "outline" : "secondary"}
+                          className={
+                            p.status === "CANCELLED" ? "shrink-0 border-muted-foreground/50 text-muted-foreground" : "shrink-0"
+                          }
+                        >
+                          {projectStatusLabel[p.status] ?? p.status}
+                        </Badge>
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">
                         {p.professionalProfile ? (p.professionalProfile.displayName ?? p.professionalProfile.user?.name ?? "Decorador") : "Sem profissional ainda"}
                       </p>
                     </CardContent>
                   </Link>
-                  {canEdit && (
+                  {(canEdit || canDeleteProject(p)) && (
                     <div className="flex gap-2 px-6 pb-6" onClick={(e) => e.preventDefault()}>
-                      <Button asChild variant="outline" size="sm" className="rounded-full flex-1">
-                        <Link to={`/app/projetos/${p.id}/editar-briefing`} className="flex items-center justify-center gap-2">
-                          <Pencil className="h-3.5 w-3.5" />
-                          Editar
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteTarget({ projectId: p.id, briefingId })}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {canEdit && (
+                        <Button asChild variant="outline" size="sm" className="rounded-full flex-1">
+                          <Link to={`/app/projetos/${p.id}/editar-briefing`} className="flex items-center justify-center gap-2">
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
+                          </Link>
+                        </Button>
+                      )}
+                      {canDeleteProject(p) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTarget({ projectId: p.id, briefingId })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir projeto
+                        </Button>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -182,7 +248,7 @@ export default function ProjectList() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir briefing?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir projeto?</AlertDialogTitle>
             <AlertDialogDescription>
               O projeto e o briefing serão removidos permanentemente. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
@@ -194,7 +260,7 @@ export default function ProjectList() {
               onClick={() => deleteTarget && deleteMutation.mutate({ briefingId: deleteTarget.briefingId })}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Excluindo…" : "Excluir"}
+              {deleteMutation.isPending ? "Excluindo…" : "Excluir projeto"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

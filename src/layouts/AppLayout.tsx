@@ -10,13 +10,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare } from "lucide-react";
+import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare, DollarSign } from "lucide-react";
 import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
+import { useChatUnread } from "@/hooks/useChatUnread";
 
 const clientNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/projetos", label: "Projetos", icon: Briefcase },
+  { to: "/app/propostas", label: "Propostas", icon: DollarSign },
   { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/novo-briefing", label: "Novo briefing", icon: Briefcase },
 ];
@@ -25,6 +27,8 @@ const professionalNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/meu-perfil", label: "Meu perfil", icon: User },
   { to: "/app/projetos", label: "Projetos", icon: Briefcase },
+  { to: "/app/projetos-disponiveis", label: "Projetos disponíveis", icon: Briefcase },
+  { to: "/app/propostas", label: "Propostas", icon: DollarSign },
   { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/pagamentos", label: "Pagamentos", icon: Wallet },
 ];
@@ -49,6 +53,7 @@ function getNav(role: Role) {
 export function AppLayout() {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { chatsWithUnread } = useChatUnread();
   const nav = user ? getNav(user.role) : [];
 
   const handleLogout = () => {
@@ -91,7 +96,14 @@ export function AppLayout() {
                   }
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <span className="flex items-center gap-2">
+                    {item.label}
+                    {item.to === "/app/chats" && chatsWithUnread > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                        {chatsWithUnread > 99 ? "99+" : chatsWithUnread}
+                      </span>
+                    )}
+                  </span>
                 </NavLink>
               ))}
             </nav>
@@ -142,7 +154,14 @@ export function AppLayout() {
                   }
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  {item.label}
+                  <span className="flex items-center gap-2">
+                    {item.label}
+                    {item.to === "/app/chats" && chatsWithUnread > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                        {chatsWithUnread > 99 ? "99+" : chatsWithUnread}
+                      </span>
+                    )}
+                  </span>
                 </NavLink>
               ))}
               <button

@@ -33,17 +33,23 @@ export function ProposalForm({ projectId, open, onOpenChange }: ProposalFormProp
     mutationFn: async () => {
       const num = parseFloat(price.replace(",", "."));
       if (isNaN(num) || num <= 0) throw new Error("Informe um valor válido.");
+      const msg = notes.trim().slice(0, 2000) || undefined;
       await api.post(`/proposals/${projectId}`, {
         price: num,
         packageType: packageType.trim() || undefined,
-        estimatedDays: estimatedDays ? parseInt(estimatedDays) : undefined,
-        notes: notes.trim() || undefined,
+        deadlineDays: estimatedDays ? parseInt(estimatedDays, 10) : undefined,
+        message: msg,
       });
     },
     onSuccess: () => {
       toast.success("Proposta enviada! O cliente será notificado.");
       queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["chat", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects-chats"] });
       onOpenChange(false);
       setPrice("");
       setPackageType("");
@@ -121,6 +127,7 @@ export function ProposalForm({ projectId, open, onOpenChange }: ProposalFormProp
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              maxLength={2000}
               className="mt-1.5 resize-none"
             />
           </div>

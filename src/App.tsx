@@ -36,6 +36,8 @@ import Usuarios from "./pages/portal/Usuarios";
 import OnboardingWizard from "./pages/portal/OnboardingWizard";
 import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
 import Chats from "./pages/portal/Chats";
+import Propostas from "./pages/portal/Propostas";
+import ProjetosDisponiveis from "./pages/portal/ProjetosDisponiveis";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +82,8 @@ const App = () => (
               <Route path="novo-briefing" element={<NovoBriefing />} />
               <Route path="projetos" element={<ProjectList />} />
               <Route path="chats" element={<Chats />} />
+              <Route path="propostas" element={<Propostas />} />
+              <Route path="projetos-disponiveis" element={<ProtectedRoute allowedRoles={["PROFESSIONAL"]}><ProjetosDisponiveis /></ProtectedRoute>} />
               <Route path="projetos/:id" element={<ProjectDetail />} />
               <Route path="projetos/:id/editar-briefing" element={<EditarBriefing />} />
               <Route path="projetos/:id/match" element={<Match />} />

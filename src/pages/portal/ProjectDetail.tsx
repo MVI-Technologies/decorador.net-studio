@@ -181,7 +181,8 @@ export default function ProjectDetail() {
     status === "REVISION_REQUESTED" ||
     status === "DELIVERED" ||
     status === "APPROVED" ||
-    status === "COMPLETED";
+    status === "COMPLETED" ||
+    status === "CANCELLED";
 
   return (
     <div className="container py-8">
@@ -192,10 +193,21 @@ export default function ProjectDetail() {
         </Link>
       </Button>
 
+      {status === "CANCELLED" && (
+        <div className="mb-6 rounded-lg border border-muted bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Este projeto foi cancelado. O histórico de conversas e propostas permanece disponível para consulta.
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-display-md text-foreground">{project.title}</h1>
-          <Badge variant="secondary" className="mt-2">{projectStatusLabel[status] ?? status}</Badge>
+          <Badge
+            variant={status === "CANCELLED" ? "outline" : "secondary"}
+            className={status === "CANCELLED" ? "mt-2 border-muted-foreground/50 text-muted-foreground" : "mt-2"}
+          >
+            {projectStatusLabel[status] ?? status}
+          </Badge>
         </div>
       </div>
 
@@ -238,7 +250,7 @@ export default function ProjectDetail() {
             <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl" aria-describedby={undefined}>
               <SheetTitle className="sr-only">Chat do projeto</SheetTitle>
               <div className="flex-1 overflow-hidden pt-6">
-                <ChatPanel projectId={id} className="h-full max-h-full border-0 rounded-none" isActive={chatOpen} />
+                <ChatPanel projectId={id} project={project} className="h-full max-h-full border-0 rounded-none" isActive={chatOpen} />
               </div>
             </SheetContent>
           </Sheet>

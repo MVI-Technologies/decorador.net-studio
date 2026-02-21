@@ -16,17 +16,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Check, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SEM_ESTILOS, styleOptionsForClient } from "@/lib/styles";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Project } from "@/types/api";
 
-const roomTypes = ["Sala", "Quarto", "Cozinha", "Banheiro", "Área externa", "Escritório", "Outro"];
-const SEM_ESTILOS = "Sem estilos";
-const styleOptions = [SEM_ESTILOS, "Moderno", "Minimalista", "Rústico", "Industrial", "Clássico", "Boho", "Tropical", "Escandinavo"];
+const ROOM_TYPES_PREDEFINED = ["Sala", "Quarto", "Cozinha", "Banheiro", "Área externa", "Escritório"];
+const styleOptions = styleOptionsForClient;
 
 const schema = z.object({
   projectTitle: z.string().min(2, "Título obrigatório"),
@@ -41,8 +42,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-/** Só permite editar briefing quando o projeto está em busca de profissional. */
-const EDITABLE_STATUSES = ["MATCHING"];
+/** Permite editar briefing quando briefing enviado ou em busca de profissional. */
+const EDITABLE_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING"];
 
 export default function EditarBriefing() {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +51,10 @@ export default function EditarBriefing() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+  const [newCustomStyle, setNewCustomStyle] = useState("");
+  const [selectedRoomTypes, setSelectedRoomTypes] = useState<string[]>([]);
+  const [showOtherRoomInput, setShowOtherRoomInput] = useState(false);
+  const [newCustomRoom, setNewCustomRoom] = useState("");
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -75,11 +80,43 @@ export default function EditarBriefing() {
     },
   });
 
+  const syncRoomTypesToForm = (rooms: string[]) => {
+    form.setValue("roomType", rooms.join(", "));
+  };
+
+  const toggleRoomType = (r: string) => {
+    const next = selectedRoomTypes.includes(r)
+      ? selectedRoomTypes.filter((x) => x !== r)
+      : [...selectedRoomTypes, r];
+    setSelectedRoomTypes(next);
+    syncRoomTypesToForm(next);
+  };
+
+  const addCustomRoom = () => {
+    const name = newCustomRoom.trim();
+    if (!name || selectedRoomTypes.includes(name)) return;
+    const next = [...selectedRoomTypes, name];
+    setSelectedRoomTypes(next);
+    syncRoomTypesToForm(next);
+    setNewCustomRoom("");
+    setShowOtherRoomInput(false);
+  };
+
+  const removeRoomType = (r: string) => {
+    const next = selectedRoomTypes.filter((x) => x !== r);
+    setSelectedRoomTypes(next);
+    syncRoomTypesToForm(next);
+  };
+
+  const customRoomTypes = selectedRoomTypes.filter((r) => !ROOM_TYPES_PREDEFINED.includes(r));
+
   useEffect(() => {
     if (project?.briefing) {
       const b = project.briefing as { projectTitle?: string; roomType?: string; roomSize?: string; budget?: string; description?: string; stylePreferences?: string[]; requirements?: string; deadline?: string };
       const styles = Array.isArray(b.stylePreferences) && b.stylePreferences.length > 0 ? b.stylePreferences : [SEM_ESTILOS];
       setSelectedStyles(styles);
+      const rooms = b.roomType ? b.roomType.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      setSelectedRoomTypes(rooms);
       form.reset({
         projectTitle: b.projectTitle ?? project.title ?? "",
         roomType: b.roomType ?? "",
@@ -91,6 +128,7 @@ export default function EditarBriefing() {
         deadline: b.deadline ?? "",
       });
     } else if (project) {
+      setSelectedRoomTypes([]);
       form.reset({
         projectTitle: project.title ?? "",
         roomType: "",
@@ -104,14 +142,13 @@ export default function EditarBriefing() {
     }
   }, [project, form]);
 
-  const roomType = form.watch("roomType");
   const roomSize = form.watch("roomSize");
   const budget = form.watch("budget");
   const description = form.watch("description");
   const projectTitle = form.watch("projectTitle");
 
   const checkedCount = [
-    !!roomType,
+    selectedRoomTypes.length > 0,
     !!roomSize,
     !!budget,
     selectedStyles.length > 0,
@@ -128,6 +165,24 @@ export default function EditarBriefing() {
       setSelectedStyles(next);
       form.setValue("stylePreferences", next);
     }
+  };
+
+  const customStyles = selectedStyles.filter((s) => !styleOptions.includes(s));
+
+  const addCustomStyle = () => {
+    const name = newCustomStyle.trim();
+    if (!name || selectedStyles.includes(name)) return;
+    const withoutSemEstilos = selectedStyles.filter((x) => x !== SEM_ESTILOS);
+    const next = [...withoutSemEstilos, name];
+    setSelectedStyles(next);
+    form.setValue("stylePreferences", next);
+    setNewCustomStyle("");
+  };
+
+  const removeCustomStyle = (name: string) => {
+    const next = selectedStyles.filter((x) => x !== name);
+    setSelectedStyles(next);
+    form.setValue("stylePreferences", next);
   };
 
   /** Enviamos [] quando "Sem estilos" ou vazio, para o backend tratar como "sem filtro por estilo" no match. */
@@ -235,24 +290,62 @@ export default function EditarBriefing() {
 
                 <div>
                   <Label className="mb-3 block">Tipo de cômodo</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Selecione um ou mais. Clique em &quot;Outro&quot; para adicionar um cômodo que não está na lista.</p>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {roomTypes.map((r) => (
+                    {ROOM_TYPES_PREDEFINED.map((r) => (
                       <button
                         key={r}
                         type="button"
-                        onClick={() => form.setValue("roomType", r)}
+                        onClick={() => toggleRoomType(r)}
                         className={cn(
                           "flex items-center justify-center gap-2 rounded-xl border-2 p-3 text-sm font-medium transition-colors",
-                          roomType === r
+                          selectedRoomTypes.includes(r)
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border bg-card hover:bg-muted"
                         )}
                       >
-                        {roomType === r && <Check className="h-4 w-4" />}
+                        {selectedRoomTypes.includes(r) && <Check className="h-4 w-4" />}
                         {r}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setShowOtherRoomInput((v) => !v)}
+                      className={cn(
+                        "flex items-center justify-center gap-2 rounded-xl border-2 p-3 text-sm font-medium transition-colors",
+                        showOtherRoomInput ? "border-primary bg-primary/10 text-primary" : "border-border bg-card hover:bg-muted"
+                      )}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Outro
+                    </button>
                   </div>
+                  {showOtherRoomInput && (
+                    <div className="mt-3 flex gap-2 items-center">
+                      <Input
+                        placeholder="Ex: Varanda, Lavanderia"
+                        value={newCustomRoom}
+                        onChange={(e) => setNewCustomRoom(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomRoom())}
+                        className="max-w-xs"
+                      />
+                      <Button type="button" variant="outline" size="sm" className="rounded-full shrink-0" onClick={addCustomRoom} disabled={!newCustomRoom.trim()}>
+                        Adicionar
+                      </Button>
+                    </div>
+                  )}
+                  {customRoomTypes.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {customRoomTypes.map((name) => (
+                        <Badge key={name} variant="secondary" className="flex items-center gap-1 pr-1">
+                          {name}
+                          <button type="button" onClick={() => removeRoomType(name)} className="rounded p-0.5 hover:bg-muted" aria-label="Remover">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <FormField
@@ -303,6 +396,36 @@ export default function EditarBriefing() {
                       </button>
                     ))}
                   </div>
+                  <div className="mt-4">
+                    <Label className="mb-2 block text-sm font-medium">Adicionar outro estilo</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Estilo que não está na lista (ex.: contemporâneo, mediterrâneo).
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Ex: Contemporâneo, Mediterrâneo"
+                        value={newCustomStyle}
+                        onChange={(e) => setNewCustomStyle(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomStyle())}
+                      />
+                      <Button type="button" variant="outline" size="sm" className="rounded-full shrink-0" onClick={addCustomStyle} disabled={!newCustomStyle.trim()}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Adicionar
+                      </Button>
+                    </div>
+                    {customStyles.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {customStyles.map((name) => (
+                          <Badge key={name} variant="secondary" className="flex items-center gap-1 pr-1">
+                            {name}
+                            <button type="button" onClick={() => removeCustomStyle(name)} className="rounded p-0.5 hover:bg-muted" aria-label="Remover">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <FormField
@@ -352,7 +475,7 @@ export default function EditarBriefing() {
                 <p className="mt-1 text-sm opacity-90">Checklist do briefing</p>
                 <ul className="mt-6 space-y-3">
                   {["Tipo de cômodo definido", "Metragem informada", "Orçamento indicado", "Estilo preferido escolhido", "Descrição do ambiente"].map((item, i) => {
-                    const done = [!!roomType, !!roomSize, !!budget, selectedStyles.length > 0, !!description][i];
+                    const done = [selectedRoomTypes.length > 0, !!roomSize, !!budget, selectedStyles.length > 0, !!description][i];
                     return (
                       <li key={item} className="flex items-center gap-2 text-sm">
                         {done ? <Check className="h-4 w-4 shrink-0" /> : <span className="h-4 w-4 shrink-0 rounded-full border-2 border-white/50" />}

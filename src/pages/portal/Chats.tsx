@@ -8,8 +8,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { projectStatusLabel } from "@/lib/projectStatus";
 import type { Project, PaginatedResponse } from "@/types/api";
 import { MessageSquare } from "lucide-react";
+import { useChatUnread } from "@/hooks/useChatUnread";
 
-/** Statuses em que o projeto tem chat disponível (cliente/profissional). */
+/** Statuses em que o projeto tem chat (inclui cancelados para histórico). */
 const CHAT_STATUSES: string[] = [
   "MATCHING",
   "NEGOCIANDO",
@@ -19,6 +20,7 @@ const CHAT_STATUSES: string[] = [
   "DELIVERED",
   "APPROVED",
   "COMPLETED",
+  "CANCELLED",
 ];
 
 const limit = 50;
@@ -34,6 +36,7 @@ function getOtherPartyName(project: Project, role: "CLIENT" | "PROFESSIONAL"): s
 
 export default function Chats() {
   const { user } = useAuth();
+  const { byProject } = useChatUnread();
 
   const { data, isLoading } = useQuery({
     queryKey: user?.role === "CLIENT" ? ["projects-chats"] : ["professional-projects-chats"],
@@ -84,9 +87,17 @@ export default function Chats() {
           {projectsWithChat.map((p) => (
             <li key={p.id}>
               <Link to={`/app/projetos/${p.id}`} state={{ openChat: true }}>
-                <Card className="overflow-hidden transition-shadow hover:shadow-soft">
+                <Card
+                  className={`overflow-hidden transition-shadow hover:shadow-soft ${
+                    p.status === "CANCELLED" ? "border-muted bg-muted/30 opacity-90" : ""
+                  }`}
+                >
                   <CardContent className="flex flex-row items-center gap-4 p-4">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        p.status === "CANCELLED" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                      }`}
+                    >
                       <MessageSquare className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -96,9 +107,19 @@ export default function Chats() {
                         {getOtherPartyName(p, user?.role === "CLIENT" ? "CLIENT" : "PROFESSIONAL")}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="shrink-0">
-                      {projectStatusLabel[p.status] ?? p.status}
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {(byProject[p.id] ?? 0) > 0 && p.status !== "CANCELLED" && (
+                        <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                          {byProject[p.id]! > 99 ? "99+" : byProject[p.id]}
+                        </span>
+                      )}
+                      <Badge
+                        variant={p.status === "CANCELLED" ? "outline" : "secondary"}
+                        className={p.status === "CANCELLED" ? "border-muted-foreground/50 text-muted-foreground" : ""}
+                      >
+                        {projectStatusLabel[p.status] ?? p.status}
+                      </Badge>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

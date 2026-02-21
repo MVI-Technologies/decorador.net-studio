@@ -75,10 +75,17 @@ export default function Dashboard() {
                     <li key={p.id}>
                       <Link
                         to={`/app/projetos/${p.id}`}
-                        className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
+                        className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                          p.status === "CANCELLED" ? "border-muted bg-muted/30 opacity-90 hover:bg-muted/50" : "border-border hover:bg-muted/50"
+                        }`}
                       >
                         <span className="font-medium text-foreground truncate">{p.title}</span>
-                        <Badge variant="secondary">{projectStatusLabel[p.status] ?? p.status}</Badge>
+                        <Badge
+                          variant={p.status === "CANCELLED" ? "outline" : "secondary"}
+                          className={p.status === "CANCELLED" ? "border-muted-foreground/50 text-muted-foreground" : ""}
+                        >
+                          {projectStatusLabel[p.status] ?? p.status}
+                        </Badge>
                         <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                       </Link>
                     </li>
@@ -126,10 +133,17 @@ export default function Dashboard() {
                   <li key={p.id}>
                     <Link
                       to={`/app/projetos/${p.id}`}
-                      className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
+                      className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                        p.status === "CANCELLED" ? "border-muted bg-muted/30 opacity-90 hover:bg-muted/50" : "border-border hover:bg-muted/50"
+                      }`}
                     >
                       <span className="font-medium text-foreground truncate">{p.title}</span>
-                      <Badge variant="secondary">{projectStatusLabel[p.status] ?? p.status}</Badge>
+                      <Badge
+                        variant={p.status === "CANCELLED" ? "outline" : "secondary"}
+                        className={p.status === "CANCELLED" ? "border-muted-foreground/50 text-muted-foreground" : ""}
+                      >
+                        {projectStatusLabel[p.status] ?? p.status}
+                      </Badge>
                       <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                     </Link>
                   </li>

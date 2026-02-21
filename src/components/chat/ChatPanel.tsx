@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useSocketChat } from "@/hooks/useSocket";
+import { CHAT_UNREAD_QUERY_KEY } from "@/hooks/useChatUnread";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { Message, NewMessagePayload, Project, Proposal, Role } from "@/types/api";
+import type { Message, NewMessagePayload, Project, Proposal, PixInfoResponse, Role } from "@/types/api";
 import {
   Send,
   Shield,
@@ -18,14 +19,24 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
+  Copy,
   X,
   DollarSign,
   Clock,
   Package,
   FileText,
+  LayoutList,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ProposalForm } from "./ProposalForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // ─── Constantes ─────────────────────────────────────────
 
@@ -110,6 +121,27 @@ function parseMessageContent(content: string) {
     }
   }
   return { type: "text" as const, body: content };
+}
+
+/** Mensagem parece ser texto de proposta (ex.: "**Proposta:** R$ 8.000") */
+function isProposalLikeMessage(content: string): boolean {
+  const t = content.trim();
+  return /^(\*\*)?Proposta:\s*/i.test(t) || t.startsWith("__PROPOSAL__");
+}
+
+/** Renderiza texto com **...** em negrito (sem mostrar os asteriscos) */
+function renderMessageBody(content: string): ReactNode {
+  const parts = content.split(/\*\*(.+?)\*\*/g);
+  if (parts.length === 1) return content;
+  return parts.map((p, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="font-semibold">
+        {p}
+      </strong>
+    ) : (
+      p
+    )
+  );
 }
 
 // ─── ChatAttachmentLink ───────────────────────────────────
@@ -210,6 +242,60 @@ function BriefingSummaryCard({ project }: { project: Project }) {
   );
 }
 
+// ─── BriefingModal (briefing completo, sem truncar) ────────
+
+function BriefingModal({
+  project,
+  open,
+  onOpenChange,
+}: {
+  project: Project;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const b = project.briefing as unknown as Record<string, unknown> | undefined;
+  const items = [
+    b?.roomType && { label: "Ambiente", value: String(b.roomType) },
+    b?.roomSize && { label: "Metragem", value: String(b.roomSize) },
+    b?.budget && { label: "Orçamento", value: `R$${Number(b.budget).toLocaleString("pt-BR")}` },
+    b?.stylePreferences &&
+      Array.isArray(b.stylePreferences) &&
+      b.stylePreferences.length && {
+        label: "Estilos",
+        value: (b.stylePreferences as string[]).join(", "),
+      },
+    b?.requirements && { label: "Requisitos", value: String(b.requirements) },
+    b?.description && { label: "Descrição", value: String(b.description) },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <LayoutList className="h-5 w-5 text-primary" />
+            Briefing do projeto — {project.title}
+          </DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="flex-1 pr-3 -mr-3">
+          <div className="space-y-4 pb-4">
+            {items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma informação de briefing disponível.</p>
+            ) : (
+              items.map(({ label, value }) => (
+                <div key={label} className="space-y-1">
+                  <span className="text-sm font-semibold text-foreground">{label}</span>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{value}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── ProposalCard ─────────────────────────────────────────
 
 function ProposalCard({
@@ -271,18 +357,19 @@ function ProposalCard({
             </span>
           </p>
         )}
-        {proposal.estimatedDays && (
+        {(proposal.estimatedDays ?? proposal.deadlineDays) != null && (
           <p className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-3.5 w-3.5 shrink-0" />
             <span>
-              <strong className="text-foreground">Prazo:</strong> {proposal.estimatedDays} dias
+              <strong className="text-foreground">Prazo:</strong>{" "}
+              {proposal.estimatedDays ?? proposal.deadlineDays} dias
             </span>
           </p>
         )}
-        {proposal.notes && (
+        {(proposal.notes ?? proposal.message) && (
           <p className="flex items-start gap-2 text-muted-foreground">
             <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            <span>{proposal.notes}</span>
+            <span>{proposal.notes ?? proposal.message}</span>
           </p>
         )}
       </div>
@@ -313,15 +400,20 @@ function ProposalCard({
 // ─── ChatPanel ───────────────────────────────────────────
 
 export function ChatPanel({ projectId, project, className, isActive = true }: ChatPanelProps) {
-  const { user } = useAuth();
+  const { user, professionalProfile } = useAuth();
   const queryClient = useQueryClient();
   const showAdminNotice = user?.role === "CLIENT" || user?.role === "PROFESSIONAL";
   const isClient = user?.role === "CLIENT";
   const isProfessional = user?.role === "PROFESSIONAL";
+  const isLinkedProfessional =
+    isProfessional && project?.status === "NEGOCIANDO" && project?.professionalProfileId === professionalProfile?.id;
 
   // State
   const [input, setInput] = useState("");
   const [proposalFormOpen, setProposalFormOpen] = useState(false);
+  const [briefingModalOpen, setBriefingModalOpen] = useState(false);
+  const [pixModalOpen, setPixModalOpen] = useState(false);
+  const [pixCopied, setPixCopied] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -353,21 +445,52 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
 
   // ── Propostas ──────────────────────────────────────────
 
-  const { data: proposalsData } = useQuery<Proposal[]>({
+  const { data: proposalsData, refetch: refetchProposals } = useQuery<Proposal[]>({
     queryKey: ["proposals", projectId],
     queryFn: async () => {
       const res = await api.get(`/proposals/${projectId}`);
-      const raw = res.data?.data ?? res.data;
-      if (Array.isArray(raw)) return raw as Proposal[];
-      return [];
+      const raw = res.data?.data ?? res.data?.proposals ?? res.data;
+      return Array.isArray(raw) ? (raw as Proposal[]) : [];
     },
     enabled: !!projectId,
+    refetchInterval: isActive && isClient ? 8_000 : false,
   });
 
-  const proposals: Proposal[] = Array.isArray(proposalsData) ? proposalsData : [];
-  const pendingProposal = proposals.find((p) => p.status === "PENDING");
-  const hasActiveProposal = proposals.some((p) => p.status === "PENDING" || p.status === "ACCEPTED");
+  const proposalsFromApi = Array.isArray(proposalsData) ? proposalsData : [];
+  const proposals: Proposal[] =
+    Array.isArray(project?.proposals) ? project.proposals : proposalsFromApi;
+
+  const hasPending = proposals.some(
+    (p) => String(p.status).toUpperCase() === "PENDING"
+  );
+  const pendingProposal = proposals.find(
+    (p) => String(p.status).toUpperCase() === "PENDING"
+  );
+  const hasActiveProposal = proposals.some(
+    (p) =>
+      String(p.status).toUpperCase() === "PENDING" ||
+      String(p.status).toUpperCase() === "ACCEPTED"
+  );
   const showMatchingStatus = project?.status === "MATCHING" && !hasActiveProposal;
+
+  /** Proposta enviada pelo profissional (a mais recente), para ele ver os dados que enviou também no chat */
+  const myProposalAsProfessional =
+    isProfessional && professionalProfile?.id
+      ? [...proposals]
+          .filter((p) => p.professionalProfileId === professionalProfile.id)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      : null;
+  const showMyProposalToProfessional = !pendingProposal && !!myProposalAsProfessional;
+
+  // ── PIX info (para modal após aceitar proposta) ─────────
+  const { data: pixInfo, isLoading: pixInfoLoading } = useQuery<PixInfoResponse>({
+    queryKey: ["payments-pix-info", projectId],
+    queryFn: async () => {
+      const res = await api.get<PixInfoResponse>(`/payments/project/${projectId}/pix-info`);
+      return res.data;
+    },
+    enabled: pixModalOpen && !!projectId && isClient,
+  });
 
   // ── Mutations propostas ────────────────────────────────
 
@@ -376,10 +499,18 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
       await api.post(`/proposals/${proposalId}/respond`, { action: "accept" });
     },
     onSuccess: () => {
-      toast.success("Proposta aceita! Realize o pagamento PIX para iniciar o projeto.");
       queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["chat", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects-chats"] });
+      if (isClient) {
+        setPixModalOpen(true);
+      } else {
+        toast.success("Proposta aceita!");
+      }
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
@@ -393,6 +524,10 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
       queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["chat", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["professional-projects-chats"] });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
@@ -420,14 +555,23 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
       });
+      if (isProposalLikeMessage(payload.content)) {
+        queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      }
+      if (payload.senderId !== user?.id) {
+        queryClient.invalidateQueries({ queryKey: CHAT_UNREAD_QUERY_KEY });
+      }
     });
     return () => { unsub?.(); };
   }, [projectId, user?.id, subscribeNewMessage, queryClient]);
 
   useEffect(() => {
     if (!projectId || !user?.id) return;
-    api.post(`/chat/${projectId}/read`).catch(() => {});
-  }, [projectId, user?.id]);
+    api.post(`/chat/${projectId}/read`).then(() => {
+      queryClient.invalidateQueries({ queryKey: CHAT_UNREAD_QUERY_KEY });
+    }).catch(() => {});
+  }, [projectId, user?.id, queryClient]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -532,13 +676,25 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
       {project && <BriefingSummaryCard project={project} />}
 
       {/* Chat Header */}
-      <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-2">
-        <div>
+      <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
           <h3 className="font-semibold text-foreground">Chat do projeto</h3>
           <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
         </div>
         <div className="flex items-center gap-2">
-          {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOCIANDO") && (
+          {project && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-1.5 shrink-0"
+              onClick={() => setBriefingModalOpen(true)}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              Ver briefing completo
+            </Button>
+          )}
+          {isLinkedProfessional && !pendingProposal && (
             <Button
               size="sm"
               className="rounded-full shadow-brand gap-1.5 shrink-0"
@@ -569,7 +725,7 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
         </div>
       )}
 
-      {/* Proposal card (pending) */}
+      {/* Proposal card (pending) — cliente vê Aceitar/Recusar */}
       {pendingProposal && (
         <div className="border-b border-border px-4 py-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -583,6 +739,130 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
           />
         </div>
       )}
+
+      {/* Proposta enviada pelo profissional (quando não há pendente) — ele vê os dados que enviou */}
+      {showMyProposalToProfessional && myProposalAsProfessional && (
+        <div className="border-b border-border px-4 py-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Sua proposta
+          </p>
+          <ProposalCard
+            proposal={myProposalAsProfessional}
+            isClient={false}
+            onAccept={() => {}}
+            onDecline={() => {}}
+          />
+        </div>
+      )}
+
+      {/* Modal PIX após aceitar proposta (cliente) */}
+      <Dialog open={pixModalOpen} onOpenChange={setPixModalOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-2 border-primary/20 p-0 overflow-hidden">
+          <DialogHeader className="gradient-brand px-6 py-4 text-white">
+            <DialogTitle className="text-lg text-white">
+              Pagamento PIX
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6 pt-2">
+            {pixInfoLoading ? (
+              <div className="flex flex-col items-center gap-4 py-8">
+                <div className="h-10 w-48 rounded bg-muted animate-pulse" />
+                <div className="h-52 w-52 rounded-xl bg-muted animate-pulse" />
+              </div>
+            ) : pixInfo ? (
+              <>
+                <p className="text-center text-sm text-muted-foreground">
+                  Realize o PIX para o admin da plataforma para iniciar o projeto.
+                </p>
+                <div className="mt-4 rounded-xl bg-muted/50 px-4 py-4 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">
+                    R$ {pixInfo.amount.toFixed(2).replace(".", ",")}
+                  </p>
+                  {pixInfo.description && (
+                    <p className="mt-1 text-xs text-muted-foreground">{pixInfo.description}</p>
+                  )}
+                </div>
+                {pixInfo.pixPayload ? (
+                  <>
+                    <Label className="mb-2 mt-4 block text-center text-sm">Escaneie o QR code no app do seu banco</Label>
+                    <div className="flex justify-center rounded-xl bg-white p-4">
+                      <QRCodeSVG value={pixInfo.pixPayload} size={200} level="M" />
+                    </div>
+                    <div className="mt-3">
+                      <Label className="text-xs text-muted-foreground">PIX copia e cola</Label>
+                      <div className="mt-1 flex gap-2">
+                        <Input readOnly value={pixInfo.pixPayload} className="font-mono text-xs" />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0 rounded-full"
+                          onClick={() => {
+                            if (pixInfo.pixPayload) {
+                              navigator.clipboard.writeText(pixInfo.pixPayload);
+                              setPixCopied(true);
+                              toast.success("PIX copia e cola copiado!");
+                              setTimeout(() => setPixCopied(false), 2000);
+                            }
+                          }}
+                        >
+                          {pixCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Label className="mb-2 mt-4 block text-sm">Chave PIX</Label>
+                    <div className="flex gap-2">
+                      <Input readOnly value={pixInfo.pixKey} className="font-mono text-sm" />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="shrink-0 rounded-full"
+                        onClick={() => {
+                          if (pixInfo.pixKey) {
+                            navigator.clipboard.writeText(pixInfo.pixKey);
+                            setPixCopied(true);
+                            toast.success("Chave PIX copiada!");
+                            setTimeout(() => setPixCopied(false), 2000);
+                          }
+                        }}
+                      >
+                        {pixCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Tipo: <strong>{pixInfo.pixKeyType}</strong>. Transfira o valor para esta chave.
+                    </p>
+                  </>
+                )}
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  Após o pagamento, o admin confirmará o recebimento e o projeto seguirá para o decorador.
+                </p>
+                <Button
+                  type="button"
+                  className="mt-4 w-full rounded-full"
+                  onClick={() => setPixModalOpen(false)}
+                >
+                  Fechar
+                </Button>
+              </>
+            ) : (
+              <div className="py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Não foi possível carregar os dados do PIX. Acesse a página de pagamento do projeto.
+                </p>
+                <Button className="mt-4 rounded-full" onClick={() => setPixModalOpen(false)}>
+                  Fechar
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Messages */}
       <ScrollArea className="min-h-[280px] flex-1 p-4">
@@ -604,13 +884,13 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
                     key={m.id}
                     className="my-2 rounded-xl bg-muted/60 px-4 py-3 text-xs text-muted-foreground whitespace-pre-line border border-border"
                   >
-                    {parsed.body}
+                    {renderMessageBody(parsed.body)}
                   </div>
                 );
               }
 
               // Mensagem de proposta inline (card principal fica acima)
-              if (parsed.type === "proposal-message") {
+              if (parsed.type === "proposal-message" || isProposalLikeMessage(m.content)) {
                 return (
                   <div
                     key={m.id}
@@ -621,7 +901,7 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
                 );
               }
 
-              // Mensagem normal
+              // Mensagem normal (** em negrito, sem asteriscos)
               return (
                 <div key={m.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                   <span
@@ -638,7 +918,7 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
                       isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                     )}
                   >
-                    <p className="break-words">{m.content}</p>
+                    <p className="break-words">{renderMessageBody(m.content)}</p>
                     {(m.fileUrl || m.fileStoragePath) && (
                       <ChatAttachmentLink fileUrl={m.fileUrl} fileStoragePath={m.fileStoragePath} />
                     )}
@@ -741,6 +1021,15 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
           projectId={projectId}
           open={proposalFormOpen}
           onOpenChange={setProposalFormOpen}
+        />
+      )}
+
+      {/* Modal com briefing completo do projeto */}
+      {project && (
+        <BriefingModal
+          project={project}
+          open={briefingModalOpen}
+          onOpenChange={setBriefingModalOpen}
         />
       )}
     </div>

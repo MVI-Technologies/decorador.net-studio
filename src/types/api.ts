@@ -22,8 +22,12 @@ export interface Proposal {
   professionalProfileId: string;
   price: number;
   packageType?: string;
+  /** Prazo em dias (API pode devolver estimatedDays ou deadlineDays) */
   estimatedDays?: number;
+  deadlineDays?: number;
+  /** Observações (API pode devolver notes ou message) */
   notes?: string;
+  message?: string;
   status: ProposalStatus;
   createdAt: string;
   professionalProfile?: Pick<ProfessionalProfile, "id" | "displayName"> & { user?: { name: string; avatarUrl?: string } };
@@ -120,6 +124,8 @@ export interface Project {
   /** Preenchido quando a API retorna dados do cliente (ex.: listagem admin). */
   client?: User;
   professionalProfile?: ProfessionalProfile;
+  /** Propostas do projeto (GET /projects/:id pode retornar; senão usar GET /proposals/:projectId). */
+  proposals?: Proposal[];
   revisionCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -170,6 +176,14 @@ export interface Review {
   comment?: string;
   createdAt: string;
   client?: User;
+}
+
+/** Resposta de GET /chat/unread-summary: quantos chats têm mensagens não lidas e por projeto */
+export interface ChatUnreadSummary {
+  /** Quantidade de conversas com pelo menos 1 mensagem não lida */
+  chatsWithUnread: number;
+  /** Por projectId: quantidade de mensagens não lidas (opcional; para badge por chat) */
+  byProject?: Record<string, number>;
 }
 
 export interface Notification {

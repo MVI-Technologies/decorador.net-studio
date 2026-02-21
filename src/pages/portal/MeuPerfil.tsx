@@ -25,13 +25,33 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { professionalStatusLabel } from "@/lib/projectStatus";
+import { STYLE_OPTIONS } from "@/lib/styles";
 import type { ProfessionalProfile, Style, PortfolioItem } from "@/types/api";
-import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, Image as ImageIcon, Check, Upload, Link as LinkIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef } from "react";
+
+const PORTFOLIO_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const PORTFOLIO_ACCEPT = "image/*,.pdf,.doc,.docx";
+
+async function uploadPortfolioFile(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await api.post<{ url?: string; path?: string; data?: { url?: string; path?: string } }>(
+    "/storage/upload",
+    form,
+    { params: { folder: "portfolio" } }
+  );
+  const data = res.data?.data ?? res.data;
+  const url = (data as { url?: string })?.url ?? res.data?.url;
+  if (!url) throw new Error("Resposta do upload sem url");
+  return url;
+}
 
 const profileSchema = z.object({
   displayName: z.string().optional(),
@@ -56,12 +76,23 @@ export default function MeuPerfil() {
   const [newStyleName, setNewStyleName] = useState("");
   const [newPortfolioTitle, setNewPortfolioTitle] = useState("");
   const [newPortfolioImageUrl, setNewPortfolioImageUrl] = useState("");
+  const [portfolioSource, setPortfolioSource] = useState<"url" | "file">("url");
+  const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
+  const [portfolioDrag, setPortfolioDrag] = useState(false);
+  const portfolioFileInputRef = useRef<HTMLInputElement>(null);
+  const portfolioDropZoneRef = useRef<HTMLDivElement>(null);
+  const [selectedPredefinedStyles, setSelectedPredefinedStyles] = useState<string[]>([]);
+  const stylesDirtyRef = useRef(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["professional-profile"],
-    queryFn: async () => {
-      const res = await api.get<ProfessionalProfile>("/professionals/me/profile");
-      return res.data;
+    queryFn: async (): Promise<ProfessionalProfile> => {
+      const res = await api.get<ProfessionalProfile | { data?: ProfessionalProfile; profile?: ProfessionalProfile }>("/professionals/me/profile");
+      const raw = res.data as Record<string, unknown> | undefined;
+      if (!raw) return {} as ProfessionalProfile;
+      const inner = (raw.data ?? raw.profile ?? raw) as ProfessionalProfile;
+      const styles = Array.isArray(inner.styles) ? inner.styles : (raw.styles as Style[] | undefined) ?? [];
+      return { ...inner, styles } as ProfessionalProfile;
     },
     enabled: user?.role === "PROFESSIONAL",
   });
@@ -108,6 +139,36 @@ export default function MeuPerfil() {
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
+  // Sincroniza a seleção com os estilos já salvos no perfil (vêm já circulados)
+  useEffect(() => {
+    if (!profile || stylesDirtyRef.current) return;
+    const list = Array.isArray(profile.styles) ? profile.styles : [];
+    const names = list
+      .filter((s) => s?.name && STYLE_OPTIONS.includes(s.name as (typeof STYLE_OPTIONS)[number]))
+      .map((s) => s.name);
+    setSelectedPredefinedStyles(names);
+  }, [profile, profile?.styles]);
+
+  const saveStylesMutation = useMutation({
+    mutationFn: async () => {
+      const current = profile?.styles ?? [];
+      const toAdd = selectedPredefinedStyles.filter((name) => !current.some((s) => s.name === name));
+      const toRemove = current.filter((s) => STYLE_OPTIONS.includes(s.name as (typeof STYLE_OPTIONS)[number]) && !selectedPredefinedStyles.includes(s.name));
+      for (const name of toAdd) {
+        await api.post("/professionals/me/styles", { name });
+      }
+      for (const s of toRemove) {
+        await api.delete(`/professionals/me/styles/${s.id}`);
+      }
+    },
+    onSuccess: () => {
+      stylesDirtyRef.current = false;
+      queryClient.invalidateQueries({ queryKey: ["professional-profile"] });
+      toast.success("Estilos salvos!");
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
   const deleteStyleMutation = useMutation({
     mutationFn: async (styleId: string) => {
       await api.delete(`/professionals/me/styles/${styleId}`);
@@ -127,11 +188,48 @@ export default function MeuPerfil() {
       queryClient.invalidateQueries({ queryKey: ["professional-profile"] });
       setNewPortfolioTitle("");
       setNewPortfolioImageUrl("");
+      setPortfolioFile(null);
+      setPortfolioSource("url");
       setPortfolioDialogOpen(false);
       toast.success("Item adicionado ao portfólio!");
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
+
+  const handleAddPortfolio = async () => {
+    const title = newPortfolioTitle.trim();
+    if (!title) return;
+    if (portfolioSource === "url") {
+      const imageUrl = newPortfolioImageUrl.trim();
+      if (!imageUrl) {
+        toast.error("Informe a URL do site ou da imagem.");
+        return;
+      }
+      addPortfolioMutation.mutate({ title, imageUrl });
+      return;
+    }
+    if (!portfolioFile) {
+      toast.error("Selecione ou arraste um arquivo.");
+      return;
+    }
+    if (portfolioFile.size > PORTFOLIO_MAX_FILE_SIZE) {
+      toast.error(`Arquivo muito grande. Máximo ${PORTFOLIO_MAX_FILE_SIZE / 1024 / 1024} MB.`);
+      return;
+    }
+    try {
+      const imageUrl = await uploadPortfolioFile(portfolioFile);
+      addPortfolioMutation.mutate({ title, imageUrl });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err));
+    }
+  };
+
+  const resetPortfolioDialog = () => {
+    setNewPortfolioTitle("");
+    setNewPortfolioImageUrl("");
+    setPortfolioFile(null);
+    setPortfolioSource("url");
+  };
 
   const deletePortfolioMutation = useMutation({
     mutationFn: async (itemId: string) => {
@@ -162,6 +260,17 @@ export default function MeuPerfil() {
   }
 
   const styles = profile.styles ?? [];
+  const customStyles = styles.filter((s) => !STYLE_OPTIONS.includes(s.name as (typeof STYLE_OPTIONS)[number]));
+  const selectedSet = new Set(selectedPredefinedStyles);
+  const allPredefinedSelected = selectedSet.size === STYLE_OPTIONS.length;
+  const savedPredefinedNames = (profile?.styles ?? [])
+    .filter((s) => STYLE_OPTIONS.includes(s.name as (typeof STYLE_OPTIONS)[number]))
+    .map((s) => s.name)
+    .sort();
+  const selectedSorted = [...selectedPredefinedStyles].sort();
+  const hasStylesChanges =
+    savedPredefinedNames.length !== selectedSorted.length ||
+    savedPredefinedNames.some((n, i) => n !== selectedSorted[i]);
   const portfolioItems = profile.portfolioItems ?? [];
 
   return (
@@ -336,60 +445,116 @@ export default function MeuPerfil() {
         </TabsContent>
         <TabsContent value="estilos" className="mt-6">
           <Card className="max-w-2xl">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Estilos</CardTitle>
-              <Dialog open={styleDialogOpen} onOpenChange={setStyleDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="rounded-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Novo estilo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <Input
-                      placeholder="Ex: Moderno, Minimalista"
-                      value={newStyleName}
-                      onChange={(e) => setNewStyleName(e.target.value)}
-                    />
-                    <Button
-                      className="w-full rounded-full shadow-brand"
-                      onClick={() => newStyleName.trim() && addStyleMutation.mutate(newStyleName.trim())}
-                      disabled={addStyleMutation.isPending || !newStyleName.trim()}
-                    >
-                      Adicionar
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <p className="text-sm text-muted-foreground mt-1">
+                Mesmos estilos que o cliente escolhe no briefing — assim o match funciona. Marque os que você trabalha.
+              </p>
             </CardHeader>
-            <CardContent>
-              {styles.length === 0 ? (
-                <EmptyState
-                  icon={ImageIcon}
-                  title="Nenhum estilo"
-                  description="Adicione estilos que você trabalha."
-                />
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {styles.map((s) => (
-                    <Badge key={s.id} variant="secondary" className="flex items-center gap-1 pr-1">
-                      {s.name}
-                      <button
-                        type="button"
-                        onClick={() => deleteStyleMutation.mutate(s.id)}
-                        className="rounded p-0.5 hover:bg-muted"
-                        aria-label="Remover"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+            <CardContent className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-sm font-medium">Estilos que você trabalha</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      setSelectedPredefinedStyles(allPredefinedSelected ? [] : [...STYLE_OPTIONS]);
+                      stylesDirtyRef.current = true;
+                    }}
+                    disabled={saveStylesMutation.isPending}
+                  >
+                    {allPredefinedSelected ? "Desmarcar todos" : "Selecionar todos"}
+                  </Button>
                 </div>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  {STYLE_OPTIONS.map((name) => {
+                    const isSelected = selectedSet.has(name);
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPredefinedStyles((prev) =>
+                            prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+                          );
+                          stylesDirtyRef.current = true;
+                        }}
+                        disabled={saveStylesMutation.isPending}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-2">Adicionar outro estilo</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Estilo que não está na lista acima (ex.: contemporâneo, mediterrâneo).
+                </p>
+                <Dialog open={styleDialogOpen} onOpenChange={setStyleDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="rounded-full">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar mais
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Novo estilo</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <Input
+                        placeholder="Ex: Contemporâneo, Mediterrâneo"
+                        value={newStyleName}
+                        onChange={(e) => setNewStyleName(e.target.value)}
+                      />
+                      <Button
+                        className="w-full rounded-full shadow-brand"
+                        onClick={() => newStyleName.trim() && addStyleMutation.mutate(newStyleName.trim())}
+                        disabled={addStyleMutation.isPending || !newStyleName.trim()}
+                      >
+                        Adicionar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                {customStyles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {customStyles.map((s) => (
+                      <Badge key={s.id} variant="secondary" className="flex items-center gap-1 pr-1">
+                        {s.name}
+                        <button
+                          type="button"
+                          onClick={() => deleteStyleMutation.mutate(s.id)}
+                          className="rounded p-0.5 hover:bg-muted"
+                          aria-label="Remover"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Button
+                type="button"
+                className="rounded-full shadow-brand"
+                onClick={() => saveStylesMutation.mutate()}
+                disabled={saveStylesMutation.isPending || !hasStylesChanges}
+              >
+                {saveStylesMutation.isPending ? "Salvando..." : "Salvar alterações"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -397,7 +562,13 @@ export default function MeuPerfil() {
           <Card className="max-w-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Portfólio</CardTitle>
-              <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
+              <Dialog
+                open={portfolioDialogOpen}
+                onOpenChange={(open) => {
+                  setPortfolioDialogOpen(open);
+                  if (!open) resetPortfolioDialog();
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" className="rounded-full">
                     <Plus className="mr-2 h-4 w-4" />
@@ -407,32 +578,131 @@ export default function MeuPerfil() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Novo item no portfólio</DialogTitle>
+                    <DialogDescription>
+                      Adicione por URL/site ou envie um arquivo (imagem ou documento).
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
-                    <Input
-                      placeholder="Título"
-                      value={newPortfolioTitle}
-                      onChange={(e) => setNewPortfolioTitle(e.target.value)}
-                    />
-                    <Input
-                      placeholder="URL da imagem"
-                      value={newPortfolioImageUrl}
-                      onChange={(e) => setNewPortfolioImageUrl(e.target.value)}
-                    />
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Título</label>
+                      <Input
+                        placeholder="Ex: Sala de estar, Projeto comercial"
+                        value={newPortfolioTitle}
+                        onChange={(e) => setNewPortfolioTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-2">Imagem ou link</p>
+                      <div className="flex gap-2 mb-3">
+                        <Button
+                          type="button"
+                          variant={portfolioSource === "url" ? "default" : "outline"}
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setPortfolioSource("url")}
+                        >
+                          <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+                          URL ou site
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={portfolioSource === "file" ? "default" : "outline"}
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setPortfolioSource("file")}
+                        >
+                          <Upload className="h-3.5 w-3.5 mr-1.5" />
+                          Arquivo
+                        </Button>
+                      </div>
+                      {portfolioSource === "url" ? (
+                        <Input
+                          placeholder="URL da imagem ou do site (ex.: https://...)"
+                          value={newPortfolioImageUrl}
+                          onChange={(e) => setNewPortfolioImageUrl(e.target.value)}
+                        />
+                      ) : (
+                        <div
+                          ref={portfolioDropZoneRef}
+                          className={cn(
+                            "rounded-xl border-2 border-dashed p-6 text-center transition-colors",
+                            portfolioDrag && "border-primary bg-primary/5",
+                            !portfolioDrag && "border-border bg-muted/30 hover:bg-muted/50"
+                          )}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPortfolioDrag(true);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const related = e.relatedTarget as Node | null;
+                            if (!portfolioDropZoneRef.current?.contains(related)) setPortfolioDrag(false);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPortfolioDrag(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) setPortfolioFile(file);
+                          }}
+                        >
+                          <input
+                            ref={portfolioFileInputRef}
+                            type="file"
+                            accept={PORTFOLIO_ACCEPT}
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) setPortfolioFile(file);
+                              e.target.value = "";
+                            }}
+                          />
+                          {portfolioFile ? (
+                            <div>
+                              <p className="font-medium text-foreground">{portfolioFile.name}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {(portfolioFile.size / 1024).toFixed(1)} KB · Máx. {PORTFOLIO_MAX_FILE_SIZE / 1024 / 1024} MB
+                              </p>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 rounded-full"
+                                onClick={() => setPortfolioFile(null)}
+                              >
+                                Trocar arquivo
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
+                              <p className="text-sm text-foreground font-medium">Arraste um arquivo aqui ou</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 rounded-full"
+                                onClick={() => portfolioFileInputRef.current?.click()}
+                              >
+                                Selecionar arquivo
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <Button
                       className="w-full rounded-full shadow-brand"
-                      onClick={() =>
-                        newPortfolioTitle.trim() &&
-                        newPortfolioImageUrl.trim() &&
-                        addPortfolioMutation.mutate({ title: newPortfolioTitle.trim(), imageUrl: newPortfolioImageUrl.trim() })
-                      }
+                      onClick={handleAddPortfolio}
                       disabled={
                         addPortfolioMutation.isPending ||
                         !newPortfolioTitle.trim() ||
-                        !newPortfolioImageUrl.trim()
+                        (portfolioSource === "url" ? !newPortfolioImageUrl.trim() : !portfolioFile)
                       }
                     >
-                      Adicionar
+                      {addPortfolioMutation.isPending ? "Adicionando..." : "Adicionar"}
                     </Button>
                   </div>
                 </DialogContent>
