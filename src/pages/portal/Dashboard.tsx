@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { adminApi } from "@/lib/admin-api";
 import type { Project, PaginatedResponse } from "@/types/api";
 import { projectStatusLabel } from "@/lib/projectStatus";
 
@@ -158,14 +159,56 @@ export default function Dashboard() {
   );
 }
 
+/**
+ * Resposta GET /admin/dashboard:
+ * { users: { total, clients, professionals }, professionals: { pendingApprovals }, projects: { total, active, completed }, finance: { totalPlatformRevenue, pendingWithdrawals } }
+ */
+function normalizeAdminDashboard(res: unknown): {
+  pendingProfessionals: number;
+  pendingWithdrawals: number;
+  totalUsers: number;
+  totalProjects: number;
+  revenue: number;
+} {
+  const body = (res as { data?: Record<string, unknown> })?.data ?? (res as Record<string, unknown>);
+  const root = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+
+  const users = (root.users && typeof root.users === "object" ? root.users : {}) as Record<string, unknown>;
+  const professionals = (root.professionals && typeof root.professionals === "object" ? root.professionals : {}) as Record<string, unknown>;
+  const projects = (root.projects && typeof root.projects === "object" ? root.projects : {}) as Record<string, unknown>;
+  const finance = (root.finance && typeof root.finance === "object" ? root.finance : {}) as Record<string, unknown>;
+
+  const getNum = (obj: Record<string, unknown>, ...keys: string[]) => {
+    for (const key of keys) {
+      const v = obj[key];
+      if (typeof v === "number" && !Number.isNaN(v)) return v;
+    }
+    return 0;
+  };
+
+  return {
+    pendingProfessionals: getNum(professionals, "pendingApprovals", "pending_approvals"),
+    pendingWithdrawals: getNum(finance, "pendingWithdrawals", "pending_withdrawals"),
+    totalUsers: getNum(users, "total"),
+    totalProjects: getNum(projects, "total"),
+    revenue: getNum(finance, "totalPlatformRevenue", "total_platform_revenue"),
+  };
+}
+
 function AdminDashboard() {
   const { data: dashboard } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
-      const res = await api.get<{ pendingProfessionals?: number; pendingWithdrawals?: number; totalUsers?: number }>("/admin/dashboard");
-      return res.data;
+      const res = await api.get(adminApi.dashboard);
+      return normalizeAdminDashboard(res.data);
     },
   });
+
+  const pendingProfessionals = dashboard?.pendingProfessionals ?? 0;
+  const pendingWithdrawals = dashboard?.pendingWithdrawals ?? 0;
+  const totalUsers = dashboard?.totalUsers ?? 0;
+  const totalProjects = dashboard?.totalProjects ?? 0;
+  const revenue = dashboard?.revenue ?? 0;
 
   return (
     <div className="container py-8">
@@ -180,7 +223,7 @@ function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{dashboard?.pendingProfessionals ?? 0}</p>
+            <p className="text-3xl font-bold text-foreground">{pendingProfessionals}</p>
             <Button asChild variant="outline" className="mt-4 rounded-full">
               <Link to="/app/profissionais-pendentes">Revisar</Link>
             </Button>
@@ -194,7 +237,7 @@ function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{dashboard?.pendingWithdrawals ?? 0}</p>
+            <p className="text-3xl font-bold text-foreground">{pendingWithdrawals}</p>
             <Button asChild variant="outline" className="mt-4 rounded-full">
               <Link to="/app/saques">Processar</Link>
             </Button>
@@ -208,10 +251,37 @@ function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-foreground">{dashboard?.totalUsers ?? 0}</p>
+            <p className="text-3xl font-bold text-foreground">{totalUsers}</p>
             <Button asChild variant="outline" className="mt-4 rounded-full">
               <Link to="/app/usuarios">Gerenciar</Link>
             </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Projetos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-foreground">{totalProjects}</p>
+            <Button asChild variant="outline" className="mt-4 rounded-full">
+              <Link to="/app/projetos-admin">Ver projetos</Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Receita
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-foreground">
+              R$ {revenue.toFixed(2).replace(".", ",")}
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -29,6 +29,7 @@ const professionalNav = [
 
 const adminNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/app/projetos-admin", label: "Projetos", icon: Briefcase },
   { to: "/app/configuracoes-pix", label: "Chave PIX", icon: KeyRound },
   { to: "/app/pagamentos-recebidos", label: "Aguard. recebimento", icon: Inbox },
   { to: "/app/pagamentos-repassar", label: "A repassar", icon: ArrowRightCircle },

@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/empty-state";
+import { adminApi } from "@/lib/admin-api";
 import type { ProfessionalProfile } from "@/types/api";
 import { User, Check, X } from "lucide-react";
 import { useState } from "react";
@@ -30,7 +31,7 @@ export default function ProfissionaisPendentes() {
   const { data: list = [] } = useQuery({
     queryKey: ["admin-professionals-pending"],
     queryFn: async () => {
-      const res = await api.get<{ data?: ProfessionalProfile[] } | ProfessionalProfile[]>("/admin/professionals/pending");
+      const res = await api.get<{ data?: ProfessionalProfile[] } | ProfessionalProfile[]>(adminApi.professionalsPending);
       const body = res.data as { data?: ProfessionalProfile[] } | ProfessionalProfile[];
       return Array.isArray(body) ? body : (body?.data ?? []);
     },
@@ -38,7 +39,7 @@ export default function ProfissionaisPendentes() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, action: a, reason: r }: { id: string; action: string; reason?: string }) => {
-      await api.patch(`/admin/professionals/${id}/status`, { action: a, reason: r });
+      await api.patch(adminApi.professionalStatus(id), { action: a, reason: r });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-professionals-pending"] });

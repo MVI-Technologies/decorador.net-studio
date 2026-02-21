@@ -5,8 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { PaymentWithProject } from "@/types/api";
+import { adminApi } from "@/lib/admin-api";
+import type { PaymentPendingTransfer } from "@/types/api";
 import { Wallet, ArrowRight } from "lucide-react";
+
+function formatBRL(value: number) {
+  return `R$ ${value.toFixed(2).replace(".", ",")}`;
+}
 
 export default function PagamentosRepassar() {
   const queryClient = useQueryClient();
@@ -14,17 +19,17 @@ export default function PagamentosRepassar() {
   const { data: list = [] } = useQuery({
     queryKey: ["admin-payments-pending-transfer"],
     queryFn: async () => {
-      const res = await api.get<{ data?: PaymentWithProject[] } | PaymentWithProject[]>(
-        "/admin/payments/pending-transfer"
+      const res = await api.get<{ data?: PaymentPendingTransfer[] } | PaymentPendingTransfer[]>(
+        adminApi.paymentsPendingTransfer
       );
-      const body = res.data as { data?: PaymentWithProject[] } | PaymentWithProject[];
+      const body = res.data as { data?: PaymentPendingTransfer[] } | PaymentPendingTransfer[];
       return Array.isArray(body) ? body : (body?.data ?? []);
     },
   });
 
   const markPaidMutation = useMutation({
     mutationFn: async (paymentId: string) => {
-      await api.patch(`/admin/payments/${paymentId}/mark-paid-to-professional`);
+      await api.patch(adminApi.paymentMarkPaidToProfessional(paymentId));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-payments-pending-transfer"] });
@@ -51,15 +56,42 @@ export default function PagamentosRepassar() {
         <div className="mt-8 space-y-4">
           {list.map((payment) => (
             <Card key={payment.id}>
-              <CardContent className="flex flex-row flex-wrap items-center justify-between gap-4 p-6">
-                <div>
+              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Projeto: <span className="font-medium text-foreground">{payment.projectTitle}</span>
+                  </p>
                   <p className="font-semibold text-foreground">
-                    R$ {payment.amount.toFixed(2).replace(".", ",")}
+                    Valor total do projeto: {formatBRL(payment.totalAmount)}
+                  </p>
+                  <p className="font-semibold text-primary">
+                    Valor a repassar ao profissional: {formatBRL(payment.amountToTransfer)}
+                  </p>
+                  {payment.platformFee > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Taxa da plataforma: {formatBRL(payment.platformFee)}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Cliente: <span className="text-foreground">{payment.clientName}</span>
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Projeto: {payment.project?.title ?? payment.projectId}
+                    Profissional: <span className="text-foreground">{payment.professionalName}</span>
                   </p>
+                  {payment.professionalPixKey ? (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Chave PIX para repasse: </span>
+                      <span className="font-medium text-foreground break-all">{payment.professionalPixKey}</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-600 dark:text-amber-500">
+                      Chave PIX não cadastrada. Peça ao profissional para cadastrar a chave PIX no perfil.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
+                    {payment.escrowStartedAt
+                      ? `Em escrow desde: ${new Date(payment.escrowStartedAt).toLocaleDateString("pt-BR")} · `
+                      : ""}
                     ID: {payment.id} · Repasse em até 4 dias úteis
                   </p>
                 </div>

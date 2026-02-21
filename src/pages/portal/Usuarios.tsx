@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
+import { adminApi } from "@/lib/admin-api";
 import type { User } from "@/types/api";
 import type { PaginatedResponse } from "@/types/api";
 import { User as UserIcon, Search } from "lucide-react";
@@ -55,7 +56,7 @@ export default function Usuarios() {
     queryFn: async () => {
       const params: Record<string, number | string> = { page, limit };
       if (searchName.trim()) params.name = searchName.trim();
-      const res = await api.get("/admin/users", { params });
+      const res = await api.get(adminApi.users, { params });
       return normalizeUsersResponse(res.data);
     },
   });
@@ -63,7 +64,7 @@ export default function Usuarios() {
   const toggleMutation = useMutation({
     mutationFn: async (userId: string) => {
       setTogglingId(userId);
-      await api.patch(`/admin/users/${userId}/toggle-active`);
+      await api.patch(adminApi.userToggleActive(userId));
     },
     onSuccess: () => {
       setTogglingId(null);
