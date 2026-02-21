@@ -127,6 +127,8 @@ export interface Message {
   senderId: string;
   content: string;
   fileUrl?: string;
+  /** Path no bucket privado do chat; usado para obter signed URL quando o link expira */
+  fileStoragePath?: string;
   createdAt: string;
   sender?: User;
 }

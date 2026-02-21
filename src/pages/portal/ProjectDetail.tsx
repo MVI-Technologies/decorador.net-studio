@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { projectStatusLabel } from "@/lib/projectStatus";
-import type { Project, ProjectStatus } from "@/types/api";
+import type { Project, ProjectStatus, Review } from "@/types/api";
 import { ArrowLeft, Check, RefreshCw, Star, MessageSquare } from "lucide-react";
 import { useState } from "react";
 
@@ -47,6 +47,22 @@ export default function ProjectDetail() {
       return (payload?.project ?? payload) as Project;
     },
     enabled: !!id,
+  });
+
+  const { data: myReview } = useQuery({
+    queryKey: ["review", "project", id],
+    queryFn: async (): Promise<Review | null> => {
+      try {
+        const res = await api.get<Review>(`/reviews/project/${id}`);
+        const data = res.data?.data ?? res.data;
+        return (data ?? null) as Review | null;
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) return null;
+        throw err;
+      }
+    },
+    enabled: !!id && user?.role === "CLIENT" && project?.status === "COMPLETED",
   });
 
   const assignMutation = useMutation({
@@ -112,6 +128,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["review", "project", id] });
       toast.success("Avaliação enviada!");
       setReviewOpen(false);
     },
@@ -299,60 +316,76 @@ export default function ProjectDetail() {
       {canReview && (
         <Card className="mt-8 max-w-xl">
           <CardHeader>
-            <CardTitle>Avaliar projeto</CardTitle>
-            <CardDescription>Deixe sua avaliação para o decorador.</CardDescription>
+            <CardTitle>{myReview ? "Sua avaliação" : "Avaliar projeto"}</CardTitle>
+            <CardDescription>
+              {myReview
+                ? "Você já avaliou este projeto."
+                : "Deixe sua avaliação para o decorador."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-              <DialogTrigger asChild>
-                <Button className="rounded-full shadow-brand">
-                  <Star className="mr-2 h-4 w-4" />
-                  Avaliar
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Avaliar entrega</DialogTitle>
-                  <DialogDesc>Nota de 1 a 5 e comentário opcional.</DialogDesc>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label>Nota (1-5)</Label>
-                    <div className="mt-2 flex gap-2">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setReviewRating(n)}
-                          className={`rounded-full h-10 w-10 font-semibold transition-colors ${
-                            reviewRating === n ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Comentário (opcional)</Label>
-                    <Textarea
-                      placeholder="Como foi a experiência?"
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      rows={3}
-                      className="mt-2"
-                    />
-                  </div>
-                  <Button
-                    className="rounded-full shadow-brand w-full"
-                    onClick={() => reviewMutation.mutate()}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Enviar avaliação
-                  </Button>
+            {myReview ? (
+              <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 fill-primary text-primary" />
+                  <span className="font-medium">{myReview.rating}/5</span>
                 </div>
-              </DialogContent>
-            </Dialog>
+                {myReview.comment && (
+                  <p className="text-muted-foreground">{myReview.comment}</p>
+                )}
+              </div>
+            ) : (
+              <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+                <DialogTrigger asChild>
+                  <Button className="rounded-full shadow-brand">
+                    <Star className="mr-2 h-4 w-4" />
+                    Avaliar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Avaliar entrega</DialogTitle>
+                    <DialogDesc>Nota de 1 a 5 e comentário opcional.</DialogDesc>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label>Nota (1-5)</Label>
+                      <div className="mt-2 flex gap-2">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setReviewRating(n)}
+                            className={`rounded-full h-10 w-10 font-semibold transition-colors ${
+                              reviewRating === n ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Comentário (opcional)</Label>
+                      <Textarea
+                        placeholder="Como foi a experiência?"
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        rows={3}
+                        className="mt-2"
+                      />
+                    </div>
+                    <Button
+                      className="rounded-full shadow-brand w-full"
+                      onClick={() => reviewMutation.mutate()}
+                      disabled={reviewMutation.isPending}
+                    >
+                      Enviar avaliação
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </CardContent>
         </Card>
       )}
