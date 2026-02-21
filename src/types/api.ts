@@ -38,6 +38,7 @@ export interface ClientProfile {
   state?: string;
   zipCode?: string;
   preferredStyles?: string[];
+  onboardingCompleted?: boolean;
 }
 
 export interface Style {

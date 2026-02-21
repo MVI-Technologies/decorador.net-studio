@@ -36,7 +36,7 @@ function HeroSection() {
             Marketplace de decoração online
           </span>
           <h1 className="text-display-xl text-foreground">
-            decor{" "}
+            decor
             <span className="text-primary">ação</span>
             <br />
             online
@@ -55,7 +55,10 @@ function HeroSection() {
         </div>
 
         <div className="relative hidden md:block">
-          <div className="aspect-[4/3] rounded-2xl bg-muted shadow-soft" aria-hidden />
+          
+          <div className="aspect-[4/3] rounded-2xl bg-muted shadow-soft" aria-hidden>
+            <img src="/images/premium_photo-1688125414656-ab91164cbd1e.avif" alt="Hero" className="w-full h-full object-cover rounded-2xl" />
+          </div>
         </div>
       </div>
     </section>

@@ -33,6 +33,7 @@ import PagamentosRepassar from "./pages/portal/PagamentosRepassar";
 import ProfissionaisPendentes from "./pages/portal/ProfissionaisPendentes";
 import Saques from "./pages/portal/Saques";
 import Usuarios from "./pages/portal/Usuarios";
+import OnboardingWizard from "./pages/portal/OnboardingWizard";
 import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,16 @@ const App = () => (
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="/ui-kit" element={<UiKit />} />
+
+            {/* Onboarding fullscreen (sem AppLayout) */}
+            <Route
+              path="/app/onboarding"
+              element={
+                <ProtectedRoute allowedRoles={["CLIENT"]}>
+                  <OnboardingWizard />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Portal (logado) */}
             <Route
