@@ -139,12 +139,14 @@ export default function ProjectDetail() {
   const status = project.status as ProjectStatus;
   const isClient = user?.role === "CLIENT";
   const isProfessional = user?.role === "PROFESSIONAL";
+  const isAdmin = user?.role === "ADMIN";
   const revisionCount = project.revisionCount ?? 0;
   const canRequestRevision = isClient && status === "DELIVERED" && revisionCount < REVISION_LIMIT;
   const canApprove = isClient && status === "DELIVERED";
   const canReview = isClient && status === "COMPLETED";
   const canAccept = isProfessional && status === "PROFESSIONAL_ASSIGNED";
   const canDeliver = isProfessional && (status === "IN_PROGRESS" || status === "REVISION_REQUESTED");
+  const showChat = isAdmin || status === "IN_PROGRESS" || status === "REVISION_REQUESTED" || status === "DELIVERED" || status === "COMPLETED" || status === "PROFESSIONAL_ASSIGNED";
 
   return (
     <div className="container py-8">
@@ -186,7 +188,7 @@ export default function ProjectDetail() {
         </Card>
       )}
 
-      {(status === "IN_PROGRESS" || status === "REVISION_REQUESTED" || status === "DELIVERED" || status === "COMPLETED" || status === "PROFESSIONAL_ASSIGNED") && (
+      {showChat && (
         <div className="mt-8">
           <ChatPanel projectId={id} className="max-w-2xl" />
         </div>

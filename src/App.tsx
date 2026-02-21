@@ -34,6 +34,7 @@ import ProfissionaisPendentes from "./pages/portal/ProfissionaisPendentes";
 import Saques from "./pages/portal/Saques";
 import Usuarios from "./pages/portal/Usuarios";
 import OnboardingWizard from "./pages/portal/OnboardingWizard";
+import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
               <Route path="pagamentos-repassar" element={<ProtectedRoute allowedRoles={["ADMIN"]}><PagamentosRepassar /></ProtectedRoute>} />
               <Route path="profissionais-pendentes" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ProfissionaisPendentes /></ProtectedRoute>} />
               <Route path="saques" element={<ProtectedRoute allowedRoles={["ADMIN"]}><Saques /></ProtectedRoute>} />
+              <Route path="projetos-admin" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ProjetosAdmin /></ProtectedRoute>} />
               <Route path="usuarios" element={<ProtectedRoute allowedRoles={["ADMIN"]}><Usuarios /></ProtectedRoute>} />
             </Route>
 

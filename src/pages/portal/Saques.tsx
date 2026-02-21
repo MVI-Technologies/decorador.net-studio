@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { adminApi } from "@/lib/admin-api";
 import type { Withdrawal } from "@/types/api";
 import { Wallet, Check, X } from "lucide-react";
 import { useState } from "react";
@@ -27,7 +28,7 @@ export default function Saques() {
   const { data: list = [] } = useQuery({
     queryKey: ["admin-withdrawals-pending"],
     queryFn: async () => {
-      const res = await api.get<{ data?: Withdrawal[] } | Withdrawal[]>("/admin/withdrawals/pending");
+      const res = await api.get<{ data?: Withdrawal[] } | Withdrawal[]>(adminApi.withdrawalsPending);
       const body = res.data as { data?: Withdrawal[] } | Withdrawal[];
       return Array.isArray(body) ? body : (body?.data ?? []);
     },
@@ -43,7 +44,7 @@ export default function Saques() {
       action: string;
       adminNotes?: string;
     }) => {
-      await api.patch(`/admin/withdrawals/${id}/process`, { action: a, adminNotes: notes });
+      await api.patch(adminApi.withdrawalProcess(id), { action: a, adminNotes: notes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-withdrawals-pending"] });

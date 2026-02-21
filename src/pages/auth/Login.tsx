@@ -44,7 +44,9 @@ export default function Login() {
       const target = (from && from !== "/" && from !== "/login") ? from : "/app";
       window.location.replace(target);
     } catch (err) {
-      toast.error(getApiErrorMessage(err));
+      const msg = getApiErrorMessage(err);
+      const showSupport = /desativad|inactive|disabled|bloquead/i.test(msg);
+      toast.error(showSupport ? "Sua conta está desativada. Entre em contato com o suporte." : msg);
     } finally {
       setLoading(false);
     }

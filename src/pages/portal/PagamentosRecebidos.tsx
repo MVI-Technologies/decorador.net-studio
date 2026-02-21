@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { adminApi } from "@/lib/admin-api";
 import type { PaymentWithProject } from "@/types/api";
 import { Wallet, Check } from "lucide-react";
 
@@ -15,7 +16,7 @@ export default function PagamentosRecebidos() {
     queryKey: ["admin-payments-pending-received"],
     queryFn: async () => {
       const res = await api.get<{ data?: PaymentWithProject[] } | PaymentWithProject[]>(
-        "/admin/payments/pending-received"
+        adminApi.paymentsPendingReceived
       );
       const body = res.data as { data?: PaymentWithProject[] } | PaymentWithProject[];
       return Array.isArray(body) ? body : (body?.data ?? []);
@@ -24,7 +25,7 @@ export default function PagamentosRecebidos() {
 
   const markReceivedMutation = useMutation({
     mutationFn: async (paymentId: string) => {
-      await api.patch(`/admin/payments/${paymentId}/mark-received`);
+      await api.patch(adminApi.paymentMarkReceived(paymentId));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-payments-pending-received"] });

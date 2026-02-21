@@ -7,16 +7,49 @@ import { useSocketChat } from "@/hooks/useSocket";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Message } from "@/types/api";
-import { Send } from "lucide-react";
+import type { Role } from "@/types/api";
+import { Send, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const roleLabel: Record<Role, string> = {
+  CLIENT: "Cliente",
+  PROFESSIONAL: "Profissional",
+  ADMIN: "Suporte",
+};
 
 interface ChatPanelProps {
   projectId: string;
   className?: string;
 }
 
+/** Extrai lista de mensagens da resposta GET /chat/:projectId/messages (aceita vários formatos) */
+function normalizeChatMessages(res: unknown): Message[] {
+  if (Array.isArray(res)) return res as Message[];
+  const body = res as Record<string, unknown> | undefined;
+  if (!body || typeof body !== "object") return [];
+  const inner = body.data as Record<string, unknown> | unknown[] | undefined;
+  if (Array.isArray(body.data)) return body.data as Message[];
+  if (Array.isArray(body.messages)) return body.messages as Message[];
+  if (inner && typeof inner === "object") {
+    const obj = inner as Record<string, unknown>;
+    if (Array.isArray(obj.data)) return obj.data as Message[];
+    if (Array.isArray(obj.messages)) return obj.messages as Message[];
+  }
+  return [];
+}
+
+function getSenderLabel(m: Message, currentUserId: string | undefined): string {
+  const isMe = m.senderId === currentUserId;
+  const sender = m.sender as { name?: string; role?: Role } | undefined;
+  const name = sender?.name?.trim() || "Participante";
+  const role = sender?.role ? roleLabel[sender.role] ?? sender.role : null;
+  if (isMe) return role ? `Você (${role})` : "Você";
+  return role ? `${name} — ${role}` : name;
+}
+
 export function ChatPanel({ projectId, className }: ChatPanelProps) {
   const { user } = useAuth();
+  const showAdminNotice = user?.role === "CLIENT" || user?.role === "PROFESSIONAL";
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { sendMessage, subscribeNewMessage } = useSocketChat(projectId, user?.id ?? null);
@@ -24,21 +57,26 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
   const { data: messagesData, refetch } = useQuery({
     queryKey: ["chat", projectId],
     queryFn: async () => {
-      const res = await api.get<{ data: Message[] }>(`/chat/${projectId}/messages`, { params: { limit: 100 } });
-      return res.data.data ?? [];
+      const res = await api.get(`/chat/${projectId}/messages`, { params: { page: 1, limit: 100 } });
+      return normalizeChatMessages(res.data);
     },
     enabled: !!projectId,
   });
 
-  const messages = messagesData ?? [];
+  const messages: Message[] = Array.isArray(messagesData) ? messagesData : [];
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !user?.id) return;
     const unsub = subscribeNewMessage(() => {
       refetch();
     });
     return unsub;
-  }, [projectId, subscribeNewMessage, refetch]);
+  }, [projectId, user?.id, subscribeNewMessage, refetch]);
+
+  useEffect(() => {
+    if (!projectId || !user?.id) return;
+    api.post(`/chat/${projectId}/read`).catch(() => {});
+  }, [projectId, user?.id]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,6 +95,12 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
       <div className="border-b border-border px-4 py-3">
         <h3 className="font-semibold text-foreground">Chat do projeto</h3>
         <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
+        {showAdminNotice && (
+          <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-muted/80 px-3 py-2 text-xs text-muted-foreground">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            O suporte da plataforma tem acesso a este chat e pode ver e enviar mensagens quando necessário.
+          </p>
+        )}
       </div>
       <ScrollArea className="h-[320px] flex-1 p-4">
         <div className="space-y-3">
@@ -65,11 +109,15 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
           ) : (
             messages.map((m) => {
               const isMe = m.senderId === user?.id;
+              const senderLabel = getSenderLabel(m, user?.id);
               return (
                 <div
                   key={m.id}
-                  className={cn("flex", isMe ? "justify-end" : "justify-start")}
+                  className={cn("flex flex-col", isMe ? "items-end" : "items-start")}
                 >
+                  <span className={cn("mb-0.5 text-xs font-medium", isMe ? "text-primary" : "text-muted-foreground")}>
+                    {senderLabel}
+                  </span>
                   <div
                     className={cn(
                       "max-w-[80%] rounded-2xl px-4 py-2 text-sm",

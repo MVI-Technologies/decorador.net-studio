@@ -14,7 +14,7 @@ export type ProjectStatus =
 
 export type ProfessionalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
 
-export type PaymentStatus = "PENDING" | "IN_ESCROW" | "RELEASED";
+export type PaymentStatus = "PENDING" | "IN_ESCROW" | "RELEASED" | "REFUNDED" | "CANCELLED";
 
 export type PixKeyType = "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "RANDOM";
 export type WithdrawalStatus = "REQUESTED" | "PROCESSING" | "COMPLETED" | "REJECTED";
@@ -26,6 +26,8 @@ export interface User {
   role: Role;
   phone?: string;
   avatarUrl?: string;
+  /** Se false, o usuário não pode fazer login. */
+  isActive?: boolean;
 }
 
 export interface ClientProfile {
@@ -98,6 +100,8 @@ export interface Project {
   professionalProfileId?: string;
   briefing?: Briefing;
   payment?: Payment;
+  /** Preenchido quando a API retorna dados do cliente (ex.: listagem admin). */
+  client?: User;
   professionalProfile?: ProfessionalProfile;
   revisionCount?: number;
   createdAt: string;
@@ -110,6 +114,11 @@ export interface Payment {
   amount: number;
   fee?: number;
   status: PaymentStatus;
+  platformFee?: number;
+  professionalAmount?: number;
+  createdAt?: string;
+  escrowStartedAt?: string;
+  releasedAt?: string | null;
 }
 
 export interface Message {
@@ -204,4 +213,23 @@ export interface AdminPixSettings {
 /** Payment com dados extras para listagens admin */
 export interface PaymentWithProject extends Payment {
   project?: Project;
+}
+
+/** Item retornado por GET /admin/payments/pending-transfer */
+export interface PaymentPendingTransfer {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  clientName: string;
+  professionalName: string;
+  /** Chave PIX do profissional; null se não cadastrada */
+  professionalPixKey: string | null;
+  /** Valor total do projeto (pago pelo cliente) */
+  totalAmount: number;
+  /** Taxa da plataforma (ex.: 15%) */
+  platformFee: number;
+  /** Valor a repassar ao profissional (já descontada a taxa) */
+  amountToTransfer: number;
+  /** Data em que entrou em escrow */
+  escrowStartedAt: string;
 }

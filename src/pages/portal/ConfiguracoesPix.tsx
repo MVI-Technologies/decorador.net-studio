@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { adminApi } from "@/lib/admin-api";
 import type { AdminPixSettings, PixKeyType } from "@/types/api";
 import { KeyRound } from "lucide-react";
 
@@ -41,14 +42,31 @@ const pixKeyTypeLabels: Record<PixKeyType, string> = {
   RANDOM: "Chave aleatória",
 };
 
+/** Normaliza resposta GET /admin/settings/pix (pode vir em res.data ou res.data.data, camelCase ou snake_case) */
+function normalizePixSettings(res: unknown): { pixKey: string; pixKeyType: PixKeyType } {
+  const raw = (res as { data?: Record<string, unknown> })?.data ?? (res as Record<string, unknown>);
+  if (!raw || typeof raw !== "object") {
+    return { pixKey: "", pixKeyType: "EMAIL" };
+  }
+  const inner = raw.data ?? raw;
+  const obj = (typeof inner === "object" && inner !== null ? inner : raw) as Record<string, unknown>;
+  const pixKey = String(obj.pixKey ?? obj.pix_key ?? "").trim();
+  const pixKeyTypeRaw = String(obj.pixKeyType ?? obj.pix_key_type ?? "EMAIL").toUpperCase();
+  const pixKeyType: PixKeyType =
+    pixKeyTypeRaw === "CPF" || pixKeyTypeRaw === "CNPJ" || pixKeyTypeRaw === "EMAIL" || pixKeyTypeRaw === "PHONE" || pixKeyTypeRaw === "RANDOM"
+      ? pixKeyTypeRaw
+      : "EMAIL";
+  return { pixKey, pixKeyType };
+}
+
 export default function ConfiguracoesPix() {
   const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["admin-settings-pix"],
     queryFn: async () => {
-      const res = await api.get<AdminPixSettings>("/admin/settings/pix");
-      return res.data;
+      const res = await api.get(adminApi.settingsPix);
+      return normalizePixSettings(res.data);
     },
   });
 
@@ -57,17 +75,19 @@ export default function ConfiguracoesPix() {
     defaultValues: { pixKey: "", pixKeyType: "EMAIL" },
     values: settings
       ? {
-          pixKey: settings.pixKey ?? "",
-          pixKeyType: (settings.pixKeyType ?? "EMAIL") as FormValues["pixKeyType"],
+          pixKey: settings.pixKey,
+          pixKeyType: settings.pixKeyType as FormValues["pixKeyType"],
         }
       : undefined,
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      await api.patch("/admin/settings/pix", { pixKey: data.pixKey, pixKeyType: data.pixKeyType });
+      const res = await api.patch<unknown>(adminApi.settingsPix, { pixKey: data.pixKey, pixKeyType: data.pixKeyType });
+      return normalizePixSettings(res.data ?? data);
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
+      queryClient.setQueryData(["admin-settings-pix"], saved);
       queryClient.invalidateQueries({ queryKey: ["admin-settings-pix"] });
       toast.success("Chave PIX atualizada!");
     },
