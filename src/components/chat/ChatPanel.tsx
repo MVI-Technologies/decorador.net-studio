@@ -13,6 +13,8 @@ import type { Message, Project, Proposal, Role } from "@/types/api";
 import {
   Send,
   Shield,
+  Paperclip,
+  Upload,
   ChevronDown,
   ChevronUp,
   Check,
@@ -25,19 +27,51 @@ import {
 import { cn } from "@/lib/utils";
 import { ProposalForm } from "./ProposalForm";
 
+// ─── Constantes ─────────────────────────────────────────
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+// ─── Tipos ──────────────────────────────────────────────
+
+interface UploadChatResult {
+  url: string;
+  path: string;
+}
+
+interface ChatPanelProps {
+  projectId: string;
+  project?: Project;
+  className?: string;
+  /** Quando true, ativa polling a cada 4s (ex.: painel aberto em Sheet) */
+  isActive?: boolean;
+}
+
+// ─── Upload de arquivo ───────────────────────────────────
+
+async function uploadChatFile(file: File): Promise<UploadChatResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await api.post<{ url?: string; path?: string; data?: { url?: string; path?: string } }>(
+    "/storage/upload",
+    form,
+    { params: { folder: "chat" } }
+  );
+  const data = res.data?.data ?? res.data;
+  const url = (data as { url?: string })?.url ?? res.data?.url;
+  const path = (data as { path?: string })?.path ?? res.data?.path;
+  if (!url || !path) throw new Error("Resposta do upload sem url ou path");
+  return { url, path };
+}
+
+// ─── roleLabel ────────────────────────────────────────────
+
 const roleLabel: Record<Role, string> = {
   CLIENT: "Cliente",
   PROFESSIONAL: "Profissional",
   ADMIN: "Suporte",
 };
 
-interface ChatPanelProps {
-  projectId: string;
-  project?: Project;
-  className?: string;
-}
-
-// ─── Helpers ────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────
 
 function normalizeChatMessages(res: unknown): Message[] {
   if (Array.isArray(res)) return res as Message[];
@@ -62,7 +96,7 @@ function getSenderLabel(m: Message, currentUserId: string | undefined): string {
   return role ? `${name} — ${role}` : name;
 }
 
-// Detecta se a mensagem é uma mensagem de sistema (__SYSTEM__) ou proposta (__PROPOSAL__)
+/** Detecta mensagens de sistema (__SYSTEM__) ou proposta (__PROPOSAL__) */
 function parseMessageContent(content: string) {
   if (content.startsWith("__SYSTEM__\n")) {
     return { type: "system" as const, body: content.replace("__SYSTEM__\n", "") };
@@ -76,6 +110,52 @@ function parseMessageContent(content: string) {
     }
   }
   return { type: "text" as const, body: content };
+}
+
+// ─── ChatAttachmentLink ───────────────────────────────────
+
+/** Link para anexo: usa signed URL quando há fileStoragePath (bucket privado), senão fileUrl */
+function ChatAttachmentLink({
+  fileUrl,
+  fileStoragePath,
+}: {
+  fileUrl?: string;
+  fileStoragePath?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (fileStoragePath) {
+      setLoading(true);
+      try {
+        const res = await api.get<{ url?: string; data?: { url?: string } }>(
+          "/storage/chat/signed-url",
+          { params: { path: fileStoragePath } }
+        );
+        const url = res.data?.url ?? (res.data as { data?: { url?: string } })?.data?.url;
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+        else toast.error("Não foi possível obter o link do anexo.");
+      } catch {
+        toast.error("Link expirado ou indisponível. Tente novamente.");
+      } finally {
+        setLoading(false);
+      }
+    } else if (fileUrl) {
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="mt-1 block text-left text-xs underline hover:no-underline disabled:opacity-70"
+    >
+      {loading ? "Abrindo…" : "Anexo"}
+    </button>
+  );
 }
 
 // ─── BriefingSummaryCard ─────────────────────────────────
@@ -156,7 +236,6 @@ function ProposalCard({
 
   return (
     <div className={cn("my-2 rounded-2xl border-2 p-4 shadow-sm", statusColor)}>
-      {/* Header */}
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-primary shrink-0" />
@@ -173,11 +252,16 @@ function ProposalCard({
             isDeclined && "border-red-400 text-red-700"
           )}
         >
-          {isPending ? "Aguardando resposta" : isAccepted ? "Aceita ✓" : isDeclined ? "Recusada" : "Em negociação"}
+          {isPending
+            ? "Aguardando resposta"
+            : isAccepted
+            ? "Aceita ✓"
+            : isDeclined
+            ? "Recusada"
+            : "Em negociação"}
         </Badge>
       </div>
 
-      {/* Details */}
       <div className="space-y-1.5 text-sm">
         {proposal.packageType && (
           <p className="flex items-center gap-2 text-muted-foreground">
@@ -203,7 +287,6 @@ function ProposalCard({
         )}
       </div>
 
-      {/* Actions (cliente) */}
       {isClient && isPending && (
         <div className="mt-4 flex gap-2">
           <Button
@@ -229,18 +312,29 @@ function ProposalCard({
 
 // ─── ChatPanel ───────────────────────────────────────────
 
-export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
+export function ChatPanel({ projectId, project, className, isActive = true }: ChatPanelProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const showAdminNotice = user?.role === "CLIENT" || user?.role === "PROFESSIONAL";
   const isClient = user?.role === "CLIENT";
   const isProfessional = user?.role === "PROFESSIONAL";
+
+  // State
   const [input, setInput] = useState("");
   const [proposalFormOpen, setProposalFormOpen] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
   const { sendMessage, subscribeNewMessage } = useSocketChat(projectId, user?.id ?? null);
 
-  // Mensagens do chat
+  // ── Mensagens ──────────────────────────────────────────
+
   const { data: messagesData, refetch } = useQuery({
     queryKey: ["chat", projectId],
     queryFn: async () => {
@@ -248,11 +342,16 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
       return normalizeChatMessages(res.data);
     },
     enabled: !!projectId,
+    refetchInterval: isActive ? 4000 : false,
   });
 
-  const messages: Message[] = Array.isArray(messagesData) ? messagesData : [];
+  const rawMessages: Message[] = Array.isArray(messagesData) ? messagesData : [];
+  const messages = [...rawMessages].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
-  // Propostas do projeto
+  // ── Propostas ──────────────────────────────────────────
+
   const { data: proposals = [] } = useQuery<Proposal[]>({
     queryKey: ["proposals", projectId],
     queryFn: async () => {
@@ -264,10 +363,10 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
 
   const pendingProposal = proposals.find((p) => p.status === "PENDING");
   const hasActiveProposal = proposals.some((p) => p.status === "PENDING" || p.status === "ACCEPTED");
-  const showMatchingStatus =
-    project?.status === "MATCHING" && !hasActiveProposal;
+  const showMatchingStatus = project?.status === "MATCHING" && !hasActiveProposal;
 
-  // Aceitar proposta
+  // ── Mutations propostas ────────────────────────────────
+
   const acceptMutation = useMutation({
     mutationFn: async (proposalId: string) => {
       await api.post(`/proposals/${proposalId}/respond`, { action: "accept" });
@@ -281,7 +380,6 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
-  // Recusar proposta
   const declineMutation = useMutation({
     mutationFn: async (proposalId: string) => {
       await api.post(`/proposals/${proposalId}/respond`, { action: "decline" });
@@ -294,6 +392,8 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
+
+  // ── Effects ────────────────────────────────────────────
 
   useEffect(() => {
     if (!projectId || !user?.id) return;
@@ -310,17 +410,104 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  const handleSend = () => {
-    const text = input.trim();
-    if (!text) return;
-    sendMessage(text);
-    setInput("");
-    refetch();
+  // ── File upload ────────────────────────────────────────
+
+  const addFile = (file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Arquivo muito grande. Máximo 10 MB.");
+      return;
+    }
+    setAttachment(file);
   };
 
+  const removeAttachment = () => setAttachment(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const related = e.relatedTarget as Node | null;
+    if (!dropZoneRef.current?.contains(related)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) addFile(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) addFile(file);
+    e.target.value = "";
+  };
+
+  // ── Send ───────────────────────────────────────────────
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text && !attachment) return;
+    if (attachment) {
+      setIsUploading(true);
+      try {
+        const { url, path } = await uploadChatFile(attachment);
+        sendMessage(text || " ", url, path);
+        setInput("");
+        setAttachment(null);
+        refetch();
+      } catch (err) {
+        toast.error(getApiErrorMessage(err));
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      sendMessage(text);
+      setInput("");
+      refetch();
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────
+
   return (
-    <div className={cn("flex flex-col rounded-xl border border-border bg-card overflow-hidden", className)}>
-      {/* Briefing Summary (pinned) */}
+    <div
+      ref={dropZoneRef}
+      className={cn(
+        "relative flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-colors",
+        isDragging && "ring-2 ring-primary",
+        className
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-background/80 backdrop-blur-sm"
+          aria-hidden
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
+            <Upload className="h-7 w-7" />
+          </div>
+          <p className="text-center text-sm font-medium text-foreground">
+            Solte o arquivo aqui para anexar
+          </p>
+          <p className="text-xs text-muted-foreground">Máximo 10 MB</p>
+        </div>
+      )}
+
+      {/* Briefing Summary (pinned, colapsável) */}
       {project && <BriefingSummaryCard project={project} />}
 
       {/* Chat Header */}
@@ -329,22 +516,24 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
           <h3 className="font-semibold text-foreground">Chat do projeto</h3>
           <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
         </div>
-        {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOTIATING") && (
-          <Button
-            size="sm"
-            className="rounded-full shadow-brand gap-1.5 shrink-0"
-            onClick={() => setProposalFormOpen(true)}
-          >
-            <DollarSign className="h-3.5 w-3.5" />
-            Enviar proposta
-          </Button>
-        )}
-        {showAdminNotice && (
-          <p className="hidden sm:flex items-center gap-1.5 rounded-lg bg-muted/80 px-3 py-2 text-xs text-muted-foreground">
-            <Shield className="h-3.5 w-3.5 shrink-0" />
-            O suporte tem acesso a este chat.
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOTIATING") && (
+            <Button
+              size="sm"
+              className="rounded-full shadow-brand gap-1.5 shrink-0"
+              onClick={() => setProposalFormOpen(true)}
+            >
+              <DollarSign className="h-3.5 w-3.5" />
+              Enviar proposta
+            </Button>
+          )}
+          {showAdminNotice && (
+            <p className="hidden sm:flex items-center gap-1.5 rounded-lg bg-muted/80 px-3 py-2 text-xs text-muted-foreground">
+              <Shield className="h-3.5 w-3.5 shrink-0" />
+              O suporte tem acesso a este chat.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Awaiting proposal banner */}
@@ -375,7 +564,7 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
       )}
 
       {/* Messages */}
-      <ScrollArea className="h-[320px] flex-1 p-4">
+      <ScrollArea className="min-h-[280px] flex-1 p-4">
         <div className="space-y-3">
           {messages.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
@@ -390,16 +579,22 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
               // Mensagem de sistema
               if (parsed.type === "system") {
                 return (
-                  <div key={m.id} className="my-2 rounded-xl bg-muted/60 px-4 py-3 text-xs text-muted-foreground whitespace-pre-line border border-border">
+                  <div
+                    key={m.id}
+                    className="my-2 rounded-xl bg-muted/60 px-4 py-3 text-xs text-muted-foreground whitespace-pre-line border border-border"
+                  >
                     {parsed.body}
                   </div>
                 );
               }
 
-              // Mensagem de proposta inline (não renderiza como card — o card já fica acima)
+              // Mensagem de proposta inline (card principal fica acima)
               if (parsed.type === "proposal-message") {
                 return (
-                  <div key={m.id} className="my-1 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground">
+                  <div
+                    key={m.id}
+                    className="my-1 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground"
+                  >
                     📨 Proposta enviada — ver card acima para detalhes e ações.
                   </div>
                 );
@@ -408,7 +603,12 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
               // Mensagem normal
               return (
                 <div key={m.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                  <span className={cn("mb-0.5 text-xs font-medium", isMe ? "text-primary" : "text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "mb-0.5 text-xs font-medium",
+                      isMe ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
                     {senderLabel}
                   </span>
                   <div
@@ -418,12 +618,15 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
                     )}
                   >
                     <p className="break-words">{m.content}</p>
-                    {m.fileUrl && (
-                      <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-1 block text-xs underline">
-                        Anexo
-                      </a>
+                    {(m.fileUrl || m.fileStoragePath) && (
+                      <ChatAttachmentLink fileUrl={m.fileUrl} fileStoragePath={m.fileStoragePath} />
                     )}
-                    <p className={cn("mt-1 text-xs", isMe ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                    <p
+                      className={cn(
+                        "mt-1 text-xs",
+                        isMe ? "text-primary-foreground/80" : "text-muted-foreground"
+                      )}
+                    >
                       {new Date(m.createdAt).toLocaleString("pt-BR")}
                     </p>
                   </div>
@@ -435,32 +638,83 @@ export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
         </div>
       </ScrollArea>
 
-      {/* Input */}
-      <div className="flex gap-2 border-t border-border p-3">
-        <Input
-          placeholder="Digite sua mensagem..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          className="rounded-full"
+      {/* Input area */}
+      <div className="flex flex-col gap-2 border-t border-border p-3">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="*"
+          onChange={handleFileInputChange}
+          aria-label="Anexar arquivo"
         />
-        <Button
-          type="button"
-          size="icon"
-          className="rounded-full shrink-0 shadow-brand"
-          onClick={handleSend}
-          disabled={!input.trim()}
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+
+        {/* Attachment preview */}
+        {attachment && (
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
+            <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 truncate text-foreground" title={attachment.name}>
+              {attachment.name}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              ({(attachment.size / 1024).toFixed(1)} KB)
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 rounded-full"
+              onClick={removeAttachment}
+              aria-label="Remover anexo"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+
+        {/* Message row */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-full shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Selecionar arquivo"
+            title="Anexar arquivo (máx. 10 MB)"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          <Input
+            placeholder="Digite sua mensagem ou arraste um arquivo..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            className="rounded-full flex-1"
+          />
+          <Button
+            type="button"
+            size="icon"
+            className="rounded-full shrink-0 shadow-brand"
+            onClick={handleSend}
+            disabled={(!input.trim() && !attachment) || isUploading}
+            aria-label="Enviar"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Arraste um arquivo aqui ou use o ícone de clipe. Máximo 10 MB.
+        </p>
       </div>
 
-      {/* ProposalForm modal */}
+      {/* ProposalForm modal (só para profissional) */}
       {isProfessional && (
         <ProposalForm
           projectId={projectId}

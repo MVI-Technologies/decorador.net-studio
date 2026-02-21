@@ -38,9 +38,15 @@ export function useSocketChat(projectId: string | null, userId: string | null) {
     };
   }, [projectId, userId]);
 
-  const sendMessage = (content: string, fileUrl?: string) => {
+  const sendMessage = (content: string, fileUrl?: string, fileStoragePath?: string) => {
     if (!projectId || !userId || !socketRef.current) return;
-    socketRef.current.emit("sendMessage", { projectId, senderId: userId, content, fileUrl });
+    socketRef.current.emit("sendMessage", {
+      projectId,
+      senderId: userId,
+      content,
+      ...(fileUrl != null && { fileUrl }),
+      ...(fileStoragePath != null && { fileStoragePath }),
+    });
   };
 
   const subscribeNewMessage = (cb: (msg: { projectId: string; senderId: string; content: string; fileUrl?: string; createdAt: string }) => void) => {
