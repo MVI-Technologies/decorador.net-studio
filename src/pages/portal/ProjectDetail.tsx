@@ -146,7 +146,15 @@ export default function ProjectDetail() {
   const canReview = isClient && status === "COMPLETED";
   const canAccept = isProfessional && status === "PROFESSIONAL_ASSIGNED";
   const canDeliver = isProfessional && (status === "IN_PROGRESS" || status === "REVISION_REQUESTED");
-  const showChat = isAdmin || status === "IN_PROGRESS" || status === "REVISION_REQUESTED" || status === "DELIVERED" || status === "COMPLETED" || status === "PROFESSIONAL_ASSIGNED";
+  const showChat =
+    isAdmin ||
+    status === "MATCHING" ||
+    status === "NEGOTIATING" ||
+    status === "PROFESSIONAL_ASSIGNED" ||
+    status === "IN_PROGRESS" ||
+    status === "REVISION_REQUESTED" ||
+    status === "DELIVERED" ||
+    status === "COMPLETED";
 
   return (
     <div className="container py-8">
@@ -164,10 +172,10 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {isClient && (status === "BRIEFING_SUBMITTED" || status === "MATCHING") && (
+      {isClient && (status === "BRIEFING_SUBMITTED" || status === "MATCHING" || status === "NEGOTIATING") && (
         <div className="mt-6">
           <Button asChild className="rounded-full shadow-brand">
-            <Link to={`/app/projetos/${id}/match`}>Ver match e atribuir profissional</Link>
+            <Link to={`/app/projetos/${id}/match`}>Escolher decorador e solicitar proposta</Link>
           </Button>
         </div>
       )}
@@ -190,7 +198,7 @@ export default function ProjectDetail() {
 
       {showChat && (
         <div className="mt-8">
-          <ChatPanel projectId={id} className="max-w-2xl" />
+          <ChatPanel projectId={id} project={project} className="max-w-2xl" />
         </div>
       )}
 
@@ -222,7 +230,7 @@ export default function ProjectDetail() {
           <CardContent>
             <Button
               className="rounded-full shadow-brand"
-              onClick={() => deliverMutation.mutate()}
+              onClick={() => deliverMutation.mutate(undefined)}
               disabled={deliverMutation.isPending}
             >
               Entregar
@@ -340,19 +348,6 @@ export default function ProjectDetail() {
         </Card>
       )}
 
-      {project.briefing && (
-        <Card className="mt-8 max-w-2xl">
-          <CardHeader>
-            <CardTitle>Briefing</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p><strong className="text-foreground">Cômodo:</strong> {project.briefing.roomType ?? "—"}</p>
-            <p><strong className="text-foreground">Metragem:</strong> {project.briefing.roomSize ?? "—"}</p>
-            <p><strong className="text-foreground">Orçamento:</strong> {project.briefing.budget ?? "—"}</p>
-            {project.briefing.description && <p><strong className="text-foreground">Descrição:</strong> {project.briefing.description}</p>}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

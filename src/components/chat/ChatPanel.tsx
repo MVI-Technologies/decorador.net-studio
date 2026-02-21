@@ -3,13 +3,27 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { useSocketChat } from "@/hooks/useSocket";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Message } from "@/types/api";
-import type { Role } from "@/types/api";
-import { Send, Shield } from "lucide-react";
+import { getApiErrorMessage } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import type { Message, Project, Proposal, Role } from "@/types/api";
+import {
+  Send,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
+  DollarSign,
+  Clock,
+  Package,
+  FileText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProposalForm } from "./ProposalForm";
 
 const roleLabel: Record<Role, string> = {
   CLIENT: "Cliente",
@@ -19,21 +33,22 @@ const roleLabel: Record<Role, string> = {
 
 interface ChatPanelProps {
   projectId: string;
+  project?: Project;
   className?: string;
 }
 
-/** Extrai lista de mensagens da resposta GET /chat/:projectId/messages (aceita vários formatos) */
+// ─── Helpers ────────────────────────────────────────────
+
 function normalizeChatMessages(res: unknown): Message[] {
   if (Array.isArray(res)) return res as Message[];
   const body = res as Record<string, unknown> | undefined;
   if (!body || typeof body !== "object") return [];
-  const inner = body.data as Record<string, unknown> | unknown[] | undefined;
   if (Array.isArray(body.data)) return body.data as Message[];
   if (Array.isArray(body.messages)) return body.messages as Message[];
+  const inner = body.data as Record<string, unknown> | undefined;
   if (inner && typeof inner === "object") {
-    const obj = inner as Record<string, unknown>;
-    if (Array.isArray(obj.data)) return obj.data as Message[];
-    if (Array.isArray(obj.messages)) return obj.messages as Message[];
+    if (Array.isArray((inner as Record<string, unknown>).data))
+      return (inner as Record<string, unknown>).data as Message[];
   }
   return [];
 }
@@ -47,13 +62,185 @@ function getSenderLabel(m: Message, currentUserId: string | undefined): string {
   return role ? `${name} — ${role}` : name;
 }
 
-export function ChatPanel({ projectId, className }: ChatPanelProps) {
+// Detecta se a mensagem é uma mensagem de sistema (__SYSTEM__) ou proposta (__PROPOSAL__)
+function parseMessageContent(content: string) {
+  if (content.startsWith("__SYSTEM__\n")) {
+    return { type: "system" as const, body: content.replace("__SYSTEM__\n", "") };
+  }
+  if (content.startsWith("__PROPOSAL__:")) {
+    try {
+      const json = JSON.parse(content.replace("__PROPOSAL__:", ""));
+      return { type: "proposal-message" as const, data: json };
+    } catch {
+      return { type: "text" as const, body: content };
+    }
+  }
+  return { type: "text" as const, body: content };
+}
+
+// ─── BriefingSummaryCard ─────────────────────────────────
+
+function BriefingSummaryCard({ project }: { project: Project }) {
+  const [open, setOpen] = useState(true);
+  const b = project.briefing as unknown as Record<string, unknown> | undefined;
+
+  const items = [
+    b?.roomType && { label: "Ambiente", value: String(b.roomType) },
+    b?.roomSize && { label: "Metragem", value: String(b.roomSize) },
+    b?.budget && { label: "Orçamento", value: `R$${Number(b.budget).toLocaleString("pt-BR")}` },
+    b?.stylePreferences &&
+      Array.isArray(b.stylePreferences) &&
+      b.stylePreferences.length && {
+        label: "Estilos",
+        value: (b.stylePreferences as string[]).join(", "),
+      },
+    b?.requirements && { label: "Requisitos", value: String(b.requirements) },
+    b?.description && { label: "Descrição", value: String(b.description) },
+  ].filter(Boolean) as { label: string; value: string }[];
+
+  return (
+    <div className="border-b border-border bg-muted/40">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div>
+          <span className="text-sm font-semibold text-foreground">📋 Resumo do projeto</span>
+          <span className="ml-2 text-xs text-muted-foreground">{project.title}</span>
+        </div>
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 px-4 pb-3 text-xs sm:grid-cols-3">
+          {items.map(({ label, value }) => (
+            <div key={label} className="min-w-0">
+              <span className="font-medium text-foreground">{label}: </span>
+              <span className="text-muted-foreground line-clamp-1">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ProposalCard ─────────────────────────────────────────
+
+function ProposalCard({
+  proposal,
+  isClient,
+  onAccept,
+  onDecline,
+}: {
+  proposal: Proposal;
+  isClient: boolean;
+  onAccept: (id: string) => void;
+  onDecline: (id: string) => void;
+}) {
+  const isPending = proposal.status === "PENDING";
+  const isAccepted = proposal.status === "ACCEPTED";
+  const isDeclined = proposal.status === "DECLINED";
+
+  const statusColor = {
+    PENDING: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
+    ACCEPTED: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
+    DECLINED: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
+    NEGOTIATING: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+  }[proposal.status];
+
+  return (
+    <div className={cn("my-2 rounded-2xl border-2 p-4 shadow-sm", statusColor)}>
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-5 w-5 text-primary shrink-0" />
+          <span className="font-bold text-foreground text-lg">
+            R${proposal.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs",
+            isPending && "border-amber-400 text-amber-700",
+            isAccepted && "border-emerald-400 text-emerald-700",
+            isDeclined && "border-red-400 text-red-700"
+          )}
+        >
+          {isPending ? "Aguardando resposta" : isAccepted ? "Aceita ✓" : isDeclined ? "Recusada" : "Em negociação"}
+        </Badge>
+      </div>
+
+      {/* Details */}
+      <div className="space-y-1.5 text-sm">
+        {proposal.packageType && (
+          <p className="flex items-center gap-2 text-muted-foreground">
+            <Package className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong className="text-foreground">Pacote:</strong> {proposal.packageType}
+            </span>
+          </p>
+        )}
+        {proposal.estimatedDays && (
+          <p className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong className="text-foreground">Prazo:</strong> {proposal.estimatedDays} dias
+            </span>
+          </p>
+        )}
+        {proposal.notes && (
+          <p className="flex items-start gap-2 text-muted-foreground">
+            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{proposal.notes}</span>
+          </p>
+        )}
+      </div>
+
+      {/* Actions (cliente) */}
+      {isClient && isPending && (
+        <div className="mt-4 flex gap-2">
+          <Button
+            size="sm"
+            className="flex-1 rounded-full shadow-brand gap-1.5"
+            onClick={() => onAccept(proposal.id)}
+          >
+            <Check className="h-4 w-4" /> Aceitar proposta
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-full gap-1.5 text-destructive hover:text-destructive"
+            onClick={() => onDecline(proposal.id)}
+          >
+            <X className="h-4 w-4" /> Recusar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ChatPanel ───────────────────────────────────────────
+
+export function ChatPanel({ projectId, project, className }: ChatPanelProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const showAdminNotice = user?.role === "CLIENT" || user?.role === "PROFESSIONAL";
+  const isClient = user?.role === "CLIENT";
+  const isProfessional = user?.role === "PROFESSIONAL";
   const [input, setInput] = useState("");
+  const [proposalFormOpen, setProposalFormOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { sendMessage, subscribeNewMessage } = useSocketChat(projectId, user?.id ?? null);
 
+  // Mensagens do chat
   const { data: messagesData, refetch } = useQuery({
     queryKey: ["chat", projectId],
     queryFn: async () => {
@@ -65,12 +252,53 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
 
   const messages: Message[] = Array.isArray(messagesData) ? messagesData : [];
 
+  // Propostas do projeto
+  const { data: proposals = [] } = useQuery<Proposal[]>({
+    queryKey: ["proposals", projectId],
+    queryFn: async () => {
+      const res = await api.get(`/proposals/${projectId}`);
+      return (res.data?.data ?? res.data ?? []) as Proposal[];
+    },
+    enabled: !!projectId,
+  });
+
+  const pendingProposal = proposals.find((p) => p.status === "PENDING");
+  const hasActiveProposal = proposals.some((p) => p.status === "PENDING" || p.status === "ACCEPTED");
+  const showMatchingStatus =
+    project?.status === "MATCHING" && !hasActiveProposal;
+
+  // Aceitar proposta
+  const acceptMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      await api.post(`/proposals/${proposalId}/respond`, { action: "accept" });
+    },
+    onSuccess: () => {
+      toast.success("Proposta aceita! Realize o pagamento PIX para iniciar o projeto.");
+      queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["chat", projectId] });
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
+  // Recusar proposta
+  const declineMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      await api.post(`/proposals/${proposalId}/respond`, { action: "decline" });
+    },
+    onSuccess: () => {
+      toast.success("Proposta recusada. Você pode continuar negociando ou escolher outro decorador.");
+      queryClient.invalidateQueries({ queryKey: ["proposals", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["chat", projectId] });
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  });
+
   useEffect(() => {
     if (!projectId || !user?.id) return;
-    const unsub = subscribeNewMessage(() => {
-      refetch();
-    });
-    return unsub;
+    const unsub = subscribeNewMessage(() => refetch());
+    return () => { unsub?.(); };
   }, [projectId, user?.id, subscribeNewMessage, refetch]);
 
   useEffect(() => {
@@ -91,30 +319,95 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
   };
 
   return (
-    <div className={cn("flex flex-col rounded-xl border border-border bg-card", className)}>
-      <div className="border-b border-border px-4 py-3">
-        <h3 className="font-semibold text-foreground">Chat do projeto</h3>
-        <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
+    <div className={cn("flex flex-col rounded-xl border border-border bg-card overflow-hidden", className)}>
+      {/* Briefing Summary (pinned) */}
+      {project && <BriefingSummaryCard project={project} />}
+
+      {/* Chat Header */}
+      <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-foreground">Chat do projeto</h3>
+          <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
+        </div>
+        {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOTIATING") && (
+          <Button
+            size="sm"
+            className="rounded-full shadow-brand gap-1.5 shrink-0"
+            onClick={() => setProposalFormOpen(true)}
+          >
+            <DollarSign className="h-3.5 w-3.5" />
+            Enviar proposta
+          </Button>
+        )}
         {showAdminNotice && (
-          <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-muted/80 px-3 py-2 text-xs text-muted-foreground">
+          <p className="hidden sm:flex items-center gap-1.5 rounded-lg bg-muted/80 px-3 py-2 text-xs text-muted-foreground">
             <Shield className="h-3.5 w-3.5 shrink-0" />
-            O suporte da plataforma tem acesso a este chat e pode ver e enviar mensagens quando necessário.
+            O suporte tem acesso a este chat.
           </p>
         )}
       </div>
+
+      {/* Awaiting proposal banner */}
+      {showMatchingStatus && (
+        <div className="flex items-center gap-3 border-b border-border bg-amber-50 px-4 py-3 dark:bg-amber-950/20">
+          <Clock className="h-4 w-4 shrink-0 text-amber-600" />
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {isClient
+              ? "Aguardando proposta do decorador. Ele já tem acesso ao seu briefing."
+              : "O cliente está aguardando sua proposta. Clique em \"Enviar proposta\" quando estiver pronto."}
+          </p>
+        </div>
+      )}
+
+      {/* Proposal card (pending) */}
+      {pendingProposal && (
+        <div className="border-b border-border px-4 py-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Proposta em aberto
+          </p>
+          <ProposalCard
+            proposal={pendingProposal}
+            isClient={isClient ?? false}
+            onAccept={(id) => acceptMutation.mutate(id)}
+            onDecline={(id) => declineMutation.mutate(id)}
+          />
+        </div>
+      )}
+
+      {/* Messages */}
       <ScrollArea className="h-[320px] flex-1 p-4">
         <div className="space-y-3">
           {messages.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma mensagem ainda. Envie a primeira!</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhuma mensagem ainda. Inicie a conversa!
+            </p>
           ) : (
             messages.map((m) => {
               const isMe = m.senderId === user?.id;
               const senderLabel = getSenderLabel(m, user?.id);
+              const parsed = parseMessageContent(m.content);
+
+              // Mensagem de sistema
+              if (parsed.type === "system") {
+                return (
+                  <div key={m.id} className="my-2 rounded-xl bg-muted/60 px-4 py-3 text-xs text-muted-foreground whitespace-pre-line border border-border">
+                    {parsed.body}
+                  </div>
+                );
+              }
+
+              // Mensagem de proposta inline (não renderiza como card — o card já fica acima)
+              if (parsed.type === "proposal-message") {
+                return (
+                  <div key={m.id} className="my-1 rounded-xl bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-muted-foreground">
+                    📨 Proposta enviada — ver card acima para detalhes e ações.
+                  </div>
+                );
+              }
+
+              // Mensagem normal
               return (
-                <div
-                  key={m.id}
-                  className={cn("flex flex-col", isMe ? "items-end" : "items-start")}
-                >
+                <div key={m.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                   <span className={cn("mb-0.5 text-xs font-medium", isMe ? "text-primary" : "text-muted-foreground")}>
                     {senderLabel}
                   </span>
@@ -141,18 +434,40 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
+
+      {/* Input */}
       <div className="flex gap-2 border-t border-border p-3">
         <Input
           placeholder="Digite sua mensagem..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
           className="rounded-full"
         />
-        <Button type="button" size="icon" className="rounded-full shrink-0 shadow-brand" onClick={handleSend} disabled={!input.trim()}>
+        <Button
+          type="button"
+          size="icon"
+          className="rounded-full shrink-0 shadow-brand"
+          onClick={handleSend}
+          disabled={!input.trim()}
+        >
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* ProposalForm modal */}
+      {isProfessional && (
+        <ProposalForm
+          projectId={projectId}
+          open={proposalFormOpen}
+          onOpenChange={setProposalFormOpen}
+        />
+      )}
     </div>
   );
 }

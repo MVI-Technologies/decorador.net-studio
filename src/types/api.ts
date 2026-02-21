@@ -5,12 +5,28 @@ export type Role = "CLIENT" | "PROFESSIONAL" | "ADMIN";
 export type ProjectStatus =
   | "BRIEFING_SUBMITTED"
   | "MATCHING"
+  | "NEGOTIATING"
   | "PROFESSIONAL_ASSIGNED"
   | "IN_PROGRESS"
   | "REVISION_REQUESTED"
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED";
+
+export type ProposalStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "NEGOTIATING";
+
+export interface Proposal {
+  id: string;
+  projectId: string;
+  professionalProfileId: string;
+  price: number;
+  packageType?: string;
+  estimatedDays?: number;
+  notes?: string;
+  status: ProposalStatus;
+  createdAt: string;
+  professionalProfile?: Pick<ProfessionalProfile, "id" | "displayName"> & { user?: { name: string; avatarUrl?: string } };
+}
 
 export type ProfessionalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
 
