@@ -15,6 +15,7 @@ import {
   DialogDescription as DialogDesc,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ export default function ProjectDetail() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [revisionComment, setRevisionComment] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -190,7 +192,22 @@ export default function ProjectDetail() {
 
       {showChat && (
         <div className="mt-8">
-          <ChatPanel projectId={id} className="max-w-2xl" />
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => setChatOpen(true)}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Abrir chat do projeto
+          </Button>
+          <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+            <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl">
+              <div className="flex-1 overflow-hidden pt-6">
+                <ChatPanel projectId={id} className="h-full max-h-full border-0 rounded-none" isActive={chatOpen} />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       )}
 

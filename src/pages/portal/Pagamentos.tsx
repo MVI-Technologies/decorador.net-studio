@@ -34,15 +34,29 @@ export default function Pagamentos() {
     enabled: user?.role === "PROFESSIONAL",
   });
 
-  const { data: withdrawals = [] } = useQuery({
+  function normalizeWithdrawals(raw: unknown): Withdrawal[] {
+    if (Array.isArray(raw)) return raw;
+    const o = raw as Record<string, unknown>;
+    if (Array.isArray(o?.data)) return o.data as Withdrawal[];
+    if (Array.isArray(o?.withdrawals)) return o.withdrawals as Withdrawal[];
+    const inner = o?.data as Record<string, unknown> | undefined;
+    if (inner && Array.isArray(inner.withdrawals)) return inner.withdrawals as Withdrawal[];
+    return [];
+  }
+
+  const { data: withdrawalsRaw } = useQuery({
     queryKey: ["payments-withdrawals"],
     queryFn: async () => {
-      const res = await api.get<{ data?: Withdrawal[] } | Withdrawal[]>("/payments/withdrawals");
-      const body = res.data as { data?: Withdrawal[] } | Withdrawal[];
-      return Array.isArray(body) ? body : (body?.data ?? []);
+      try {
+        const res = await api.get("/payments/withdrawals");
+        return normalizeWithdrawals(res.data);
+      } catch {
+        return [];
+      }
     },
     enabled: user?.role === "PROFESSIONAL",
   });
+  const withdrawals = normalizeWithdrawals(withdrawalsRaw);
 
   const withdrawMutation = useMutation({
     mutationFn: async (value: number) => {

@@ -20,6 +20,8 @@ const roleLabel: Record<Role, string> = {
 interface ChatPanelProps {
   projectId: string;
   className?: string;
+  /** Quando true, ativa polling para mensagens em tempo real (ex.: painel aberto) */
+  isActive?: boolean;
 }
 
 /** Extrai lista de mensagens da resposta GET /chat/:projectId/messages (aceita vários formatos) */
@@ -47,7 +49,7 @@ function getSenderLabel(m: Message, currentUserId: string | undefined): string {
   return role ? `${name} — ${role}` : name;
 }
 
-export function ChatPanel({ projectId, className }: ChatPanelProps) {
+export function ChatPanel({ projectId, className, isActive = true }: ChatPanelProps) {
   const { user } = useAuth();
   const showAdminNotice = user?.role === "CLIENT" || user?.role === "PROFESSIONAL";
   const [input, setInput] = useState("");
@@ -61,9 +63,13 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
       return normalizeChatMessages(res.data);
     },
     enabled: !!projectId,
+    refetchInterval: isActive ? 4000 : false,
   });
 
-  const messages: Message[] = Array.isArray(messagesData) ? messagesData : [];
+  const rawMessages: Message[] = Array.isArray(messagesData) ? messagesData : [];
+  const messages = [...rawMessages].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
   useEffect(() => {
     if (!projectId || !user?.id) return;
@@ -102,7 +108,7 @@ export function ChatPanel({ projectId, className }: ChatPanelProps) {
           </p>
         )}
       </div>
-      <ScrollArea className="h-[320px] flex-1 p-4">
+      <ScrollArea className="min-h-[280px] flex-1 p-4">
         <div className="space-y-3">
           {messages.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma mensagem ainda. Envie a primeira!</p>
