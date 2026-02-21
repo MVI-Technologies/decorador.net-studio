@@ -8,8 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle } from "lucide-react";
+import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle } from "lucide-react";
 import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
 
@@ -55,22 +56,23 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
+        <div className="container flex h-14 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
             <button
-              className="md:hidden flex items-center justify-center p-2 rounded-md text-foreground"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Menu"
+              type="button"
+              className="sm:hidden flex shrink-0 items-center justify-center p-2 rounded-md text-foreground hover:bg-muted"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
             >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </button>
-            <Link to="/app" className="flex items-center gap-1.5">
+            <Link to="/app" className="flex shrink-0 items-center gap-1.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
                 d
               </span>
               <span className="hidden font-semibold text-foreground sm:inline">Decorador.net</span>
             </Link>
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden sm:flex items-center gap-1 overflow-x-auto py-1 min-w-0 flex-1">
               {nav.map((item) => (
                 <NavLink
                   key={item.to}
@@ -78,21 +80,21 @@ export function AppLayout() {
                   end={item.to === "/app"}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )
                   }
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-4 w-4 shrink-0" />
                   {item.label}
                 </NavLink>
               ))}
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
@@ -117,9 +119,12 @@ export function AppLayout() {
           </div>
         </div>
 
-        {mobileOpen && (
-          <div className="border-t border-border bg-background md:hidden">
-            <nav className="container flex flex-col gap-1 py-4">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="w-[min(320px,85vw)] flex flex-col p-0">
+            <SheetHeader className="border-b border-border px-6 py-4 text-left">
+              <SheetTitle className="text-base font-semibold">Menu</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-4">
               {nav.map((item) => (
                 <NavLink
                   key={item.to}
@@ -128,25 +133,26 @@ export function AppLayout() {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium",
-                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                      "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )
                   }
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-5 w-5 shrink-0" />
                   {item.label}
                 </NavLink>
               ))}
               <button
+                type="button"
                 onClick={handleLogout}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-destructive"
+                className="mt-2 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-destructive hover:bg-destructive/10"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-5 w-5 shrink-0" />
                 Sair
               </button>
             </nav>
-          </div>
-        )}
+          </SheetContent>
+        </Sheet>
       </header>
 
       <main className="flex-1">

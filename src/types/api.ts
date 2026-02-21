@@ -26,6 +26,8 @@ export interface User {
   role: Role;
   phone?: string;
   avatarUrl?: string;
+  /** Se false, o usuário não pode fazer login. */
+  isActive?: boolean;
 }
 
 export interface ClientProfile {

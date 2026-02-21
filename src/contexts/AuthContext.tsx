@@ -22,6 +22,8 @@ interface AuthContextValue extends AuthState {
 /** Normaliza user da API (camelCase ou snake_case) */
 function normalizeUser(raw: Record<string, unknown>): User {
   const u = raw as Record<string, unknown>;
+  const activeRaw = u.isActive ?? u.active ?? true;
+  const isActive = activeRaw === false || activeRaw === "false" ? false : true;
   return {
     id: String(u.id ?? ""),
     email: String(u.email ?? ""),
@@ -29,6 +31,7 @@ function normalizeUser(raw: Record<string, unknown>): User {
     role: (u.role as Role) ?? "CLIENT",
     phone: (u.phone ?? u.phoneNumber ?? u.telefone ?? u.phone_number) as string | undefined,
     avatarUrl: (u.avatarUrl ?? u.avatar_url) as string | undefined,
+    isActive,
   };
 }
 
@@ -58,6 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const user = rawUser ? normalizeUser(rawUser as Record<string, unknown>) : null;
       const clientProfile = payload?.clientProfile ?? null;
       const professionalProfile = payload?.professionalProfile ?? null;
+      if (user?.isActive === false) {
+        clearStoredToken();
+        setState((s) => ({ ...s, user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false }));
+        return;
+      }
       if (user) {
         setState({
           user,
@@ -114,8 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string) => {
       const response = await api.post("/auth/signin", { email, password });
       const payload = response.data?.data ?? response.data;
-      const { user, accessToken } = payload;
-      if (!user || !accessToken) throw new Error("Resposta de login inválida");
+      const { user: rawUser, accessToken } = payload;
+      if (!rawUser || !accessToken) throw new Error("Resposta de login inválida");
+      const user = normalizeUser(rawUser as Record<string, unknown>);
+      if (user.isActive === false) {
+        clearStoredToken();
+        throw new Error("Sua conta está desativada. Entre em contato com o suporte.");
+      }
       setStoredToken(accessToken);
       setBootstrapUser(user);
       setState({
