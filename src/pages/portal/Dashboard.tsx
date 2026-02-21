@@ -1,17 +1,19 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight } from "lucide-react";
+import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight, Sparkles } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Project, PaginatedResponse } from "@/types/api";
 import { projectStatusLabel } from "@/lib/projectStatus";
+import { useFirstAccess } from "@/hooks/useFirstAccess";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading, clientProfile } = useAuth();
+  const { isFirstAccess } = useFirstAccess();
 
   const { data: projectsData } = useQuery({
     queryKey: user?.role === "CLIENT" ? ["projects"] : ["professional-projects"],
@@ -31,6 +33,12 @@ export default function Dashboard() {
 
   const raw = projectsData?.data;
   const projects = Array.isArray(raw) ? raw : (raw?.data ?? []);
+
+  // Redirect CLIENT to onboarding on first access.
+  // Guard: only redirect once the profile is fully loaded from the API.
+  if (!loading && user?.role === "CLIENT" && clientProfile !== null && isFirstAccess()) {
+    return <Navigate to="/app/onboarding" replace />;
+  }
 
   if (user?.role === "ADMIN") {
     return <AdminDashboard />;
@@ -110,18 +118,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {projects.length === 0 ? (
-              <EmptyState
-                icon={Briefcase}
-                title="Nenhum projeto ainda"
-                description="Crie seu primeiro briefing e encontre um decorador compatível."
-              >
-                <Button asChild className="rounded-full shadow-brand">
-                  <Link to="/app/novo-briefing">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Criar projeto
-                  </Link>
-                </Button>
-              </EmptyState>
+              <ClientZeroState />
             ) : (
               <ul className="space-y-3">
                 {projects.map((p) => (
@@ -158,8 +155,33 @@ export default function Dashboard() {
   );
 }
 
+function ClientZeroState() {
+  return (
+    <div className="flex flex-col items-center gap-6 py-10 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full gradient-brand shadow-brand">
+        <Sparkles className="h-10 w-10 text-white" />
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-foreground">Seu espaço dos sonhos te espera</h3>
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+          Crie seu primeiro projeto e encontre o decorador ideal para transformar seu ambiente.
+        </p>
+      </div>
+      <Button asChild className="rounded-full shadow-brand px-8" size="lg">
+        <Link to="/app/onboarding">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Criar meu primeiro projeto
+        </Link>
+      </Button>
+      <p className="text-xs text-muted-foreground">Leva menos de 2 minutos ✨</p>
+    </div>
+  );
+}
+
+
 function AdminDashboard() {
   const { data: dashboard } = useQuery({
+
     queryKey: ["admin-dashboard"],
     queryFn: async () => {
       const res = await api.get<{ pendingProfessionals?: number; pendingWithdrawals?: number; totalUsers?: number }>("/admin/dashboard");
