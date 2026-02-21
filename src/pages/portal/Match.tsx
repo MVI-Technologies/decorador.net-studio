@@ -49,7 +49,7 @@ export default function Match() {
     },
     enabled:
       !!id &&
-      (project?.status === "BRIEFING_SUBMITTED" || project?.status === "MATCHING"),
+      (project?.status === "BRIEFING_SUBMITTED" || project?.status === "MATCHING" || project?.status === "NEGOCIANDO"),
   });
 
   const requestMutation = useMutation({
@@ -61,7 +61,7 @@ export default function Match() {
       setConfirmOpen(false);
       setSelectedProf(null);
       setMessage("");
-      navigate(`/app/projetos/${id}`);
+      navigate(`/app/projetos/${id}`, { state: { openChat: true } });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });

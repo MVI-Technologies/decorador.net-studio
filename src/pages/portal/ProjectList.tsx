@@ -23,7 +23,8 @@ import { projectStatusLabel } from "@/lib/projectStatus";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const EDITABLE_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING"];
+/** Só permite editar/excluir briefing quando o projeto está em busca de profissional. */
+const EDITABLE_STATUSES = ["MATCHING"];
 
 const limit = 10;
 

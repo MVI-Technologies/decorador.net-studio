@@ -35,6 +35,7 @@ import Saques from "./pages/portal/Saques";
 import Usuarios from "./pages/portal/Usuarios";
 import OnboardingWizard from "./pages/portal/OnboardingWizard";
 import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
+import Chats from "./pages/portal/Chats";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="perfil" element={<Perfil />} />
               <Route path="novo-briefing" element={<NovoBriefing />} />
               <Route path="projetos" element={<ProjectList />} />
+              <Route path="chats" element={<Chats />} />
               <Route path="projetos/:id" element={<ProjectDetail />} />
               <Route path="projetos/:id/editar-briefing" element={<EditarBriefing />} />
               <Route path="projetos/:id/match" element={<Match />} />

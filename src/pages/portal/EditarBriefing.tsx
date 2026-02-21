@@ -41,7 +41,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const EDITABLE_STATUSES = ["BRIEFING_SUBMITTED", "MATCHING"];
+/** Só permite editar briefing quando o projeto está em busca de profissional. */
+const EDITABLE_STATUSES = ["MATCHING"];
 
 export default function EditarBriefing() {
   const { id } = useParams<{ id: string }>();

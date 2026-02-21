@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { getStoredToken } from "@/lib/api";
+import type { NewMessagePayload } from "@/types/api";
 
 const getSocketBaseUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
@@ -16,7 +18,12 @@ let socket: Socket | null = null;
 function getSocket(): Socket {
   if (!socket) {
     const base = getSocketBaseUrl();
-    socket = io(`${base}/chat`, { path: "/socket.io", transports: ["websocket", "polling"] });
+    const token = getStoredToken();
+    socket = io(`${base}/chat`, {
+      path: "/socket.io",
+      transports: ["websocket"],
+      ...(token ? { auth: { token } } : {}),
+    });
   }
   return socket;
 }
@@ -49,7 +56,8 @@ export function useSocketChat(projectId: string | null, userId: string | null) {
     });
   };
 
-  const subscribeNewMessage = (cb: (msg: { projectId: string; senderId: string; content: string; fileUrl?: string; createdAt: string }) => void) => {
+  /** Ouvir newMessage e dar append no cache/estado; usar payload.id para não duplicar. */
+  const subscribeNewMessage = (cb: (payload: NewMessagePayload) => void) => {
     const s = socketRef.current ?? getSocket();
     s.on("newMessage", cb);
     return () => s.off("newMessage", cb);

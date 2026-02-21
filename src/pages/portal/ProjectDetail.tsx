@@ -1,4 +1,4 @@
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -15,7 +15,7 @@ import {
   DialogDescription as DialogDesc,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -23,13 +23,14 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { projectStatusLabel } from "@/lib/projectStatus";
 import type { Project, ProjectStatus, Review } from "@/types/api";
 import { ArrowLeft, Check, RefreshCw, Star, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const REVISION_LIMIT = 3;
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -38,6 +39,12 @@ export default function ProjectDetail() {
   const [reviewComment, setReviewComment] = useState("");
   const [revisionComment, setRevisionComment] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    if ((location.state as { openChat?: boolean })?.openChat) {
+      setChatOpen(true);
+    }
+  }, [location.state]);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -168,11 +175,12 @@ export default function ProjectDetail() {
   const showChat =
     isAdmin ||
     status === "MATCHING" ||
-    status === "NEGOTIATING" ||
+    status === "NEGOCIANDO" ||
     status === "PROFESSIONAL_ASSIGNED" ||
     status === "IN_PROGRESS" ||
     status === "REVISION_REQUESTED" ||
     status === "DELIVERED" ||
+    status === "APPROVED" ||
     status === "COMPLETED";
 
   return (
@@ -191,7 +199,7 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {isClient && (status === "BRIEFING_SUBMITTED" || status === "MATCHING" || status === "NEGOTIATING") && (
+      {isClient && (status === "BRIEFING_SUBMITTED" || status === "MATCHING") && (
         <div className="mt-6">
           <Button asChild className="rounded-full shadow-brand">
             <Link to={`/app/projetos/${id}/match`}>Escolher decorador e solicitar proposta</Link>
@@ -227,7 +235,8 @@ export default function ProjectDetail() {
             Abrir chat do projeto
           </Button>
           <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-            <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl">
+            <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-2xl" aria-describedby={undefined}>
+              <SheetTitle className="sr-only">Chat do projeto</SheetTitle>
               <div className="flex-1 overflow-hidden pt-6">
                 <ChatPanel projectId={id} className="h-full max-h-full border-0 rounded-none" isActive={chatOpen} />
               </div>

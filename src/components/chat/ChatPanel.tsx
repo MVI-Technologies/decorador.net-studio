@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { Message, Project, Proposal, Role } from "@/types/api";
+import type { Message, NewMessagePayload, Project, Proposal, Role } from "@/types/api";
 import {
   Send,
   Shield,
@@ -331,18 +331,19 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
-  const { sendMessage, subscribeNewMessage } = useSocketChat(projectId, user?.id ?? null);
+  const { connected: socketConnected, sendMessage, subscribeNewMessage } = useSocketChat(projectId, user?.id ?? null);
 
-  // ── Mensagens ──────────────────────────────────────────
+  // ── Mensagens (carregamento inicial via HTTP; atualizações em tempo real via WebSocket) ─────
 
+  const queryKeyChat = ["chat", projectId] as const;
   const { data: messagesData, refetch } = useQuery({
-    queryKey: ["chat", projectId],
+    queryKey: queryKeyChat,
     queryFn: async () => {
       const res = await api.get(`/chat/${projectId}/messages`, { params: { page: 1, limit: 100 } });
       return normalizeChatMessages(res.data);
     },
     enabled: !!projectId,
-    refetchInterval: isActive ? 4000 : false,
+    refetchInterval: isActive && !socketConnected ? 10_000 : false,
   });
 
   const rawMessages: Message[] = Array.isArray(messagesData) ? messagesData : [];
@@ -352,15 +353,18 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
 
   // ── Propostas ──────────────────────────────────────────
 
-  const { data: proposals = [] } = useQuery<Proposal[]>({
+  const { data: proposalsData } = useQuery<Proposal[]>({
     queryKey: ["proposals", projectId],
     queryFn: async () => {
       const res = await api.get(`/proposals/${projectId}`);
-      return (res.data?.data ?? res.data ?? []) as Proposal[];
+      const raw = res.data?.data ?? res.data;
+      if (Array.isArray(raw)) return raw as Proposal[];
+      return [];
     },
     enabled: !!projectId,
   });
 
+  const proposals: Proposal[] = Array.isArray(proposalsData) ? proposalsData : [];
   const pendingProposal = proposals.find((p) => p.status === "PENDING");
   const hasActiveProposal = proposals.some((p) => p.status === "PENDING" || p.status === "ACCEPTED");
   const showMatchingStatus = project?.status === "MATCHING" && !hasActiveProposal;
@@ -393,13 +397,32 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
-  // ── Effects ────────────────────────────────────────────
+  // ── Effects: atualização em tempo real via WebSocket ─────
 
   useEffect(() => {
     if (!projectId || !user?.id) return;
-    const unsub = subscribeNewMessage(() => refetch());
+    const unsub = subscribeNewMessage((payload: NewMessagePayload) => {
+      if (payload.projectId !== projectId) return;
+      const newMsg: Message = {
+        id: payload.id,
+        projectId: payload.projectId,
+        senderId: payload.senderId,
+        content: payload.content,
+        createdAt: payload.createdAt,
+        ...(payload.fileUrl != null && { fileUrl: payload.fileUrl }),
+        ...(payload.fileStoragePath != null && { fileStoragePath: payload.fileStoragePath }),
+        ...(payload.sender != null && { sender: payload.sender as Message["sender"] }),
+      };
+      queryClient.setQueryData<Message[]>(queryKeyChat, (old) => {
+        const list = Array.isArray(old) ? old : [];
+        if (list.some((m) => m.id === payload.id)) return list;
+        return [...list, newMsg].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      });
+    });
     return () => { unsub?.(); };
-  }, [projectId, user?.id, subscribeNewMessage, refetch]);
+  }, [projectId, user?.id, subscribeNewMessage, queryClient]);
 
   useEffect(() => {
     if (!projectId || !user?.id) return;
@@ -464,7 +487,6 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
         sendMessage(text || " ", url, path);
         setInput("");
         setAttachment(null);
-        refetch();
       } catch (err) {
         toast.error(getApiErrorMessage(err));
       } finally {
@@ -473,7 +495,6 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
     } else {
       sendMessage(text);
       setInput("");
-      refetch();
     }
   };
 
@@ -517,7 +538,7 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
           <p className="text-xs text-muted-foreground">Mensagens em tempo real</p>
         </div>
         <div className="flex items-center gap-2">
-          {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOTIATING") && (
+          {isProfessional && (project?.status === "MATCHING" || project?.status === "NEGOCIANDO") && (
             <Button
               size="sm"
               className="rounded-full shadow-brand gap-1.5 shrink-0"

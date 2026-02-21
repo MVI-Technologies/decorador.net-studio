@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { adminApi } from "@/lib/admin-api";
 import type { PaymentWithProject } from "@/types/api";
+import { paymentStatusLabel } from "@/lib/projectStatus";
 import { Wallet, Check } from "lucide-react";
 
 export default function PagamentosRecebidos() {
@@ -61,7 +62,7 @@ export default function PagamentosRecebidos() {
                     Projeto: {payment.project?.title ?? payment.projectId}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    ID: {payment.id} · Status: {payment.status}
+                    ID: {payment.id} · Status: {paymentStatusLabel[payment.status] ?? payment.status}
                   </p>
                 </div>
                 <Button

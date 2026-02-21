@@ -5,11 +5,12 @@ export type Role = "CLIENT" | "PROFESSIONAL" | "ADMIN";
 export type ProjectStatus =
   | "BRIEFING_SUBMITTED"
   | "MATCHING"
-  | "NEGOTIATING"
+  | "NEGOCIANDO"
   | "PROFESSIONAL_ASSIGNED"
   | "IN_PROGRESS"
   | "REVISION_REQUESTED"
   | "DELIVERED"
+  | "APPROVED"
   | "COMPLETED"
   | "CANCELLED";
 
@@ -147,6 +148,18 @@ export interface Message {
   fileStoragePath?: string;
   createdAt: string;
   sender?: User;
+}
+
+/** Payload do evento newMessage (Socket.io). Backend deve enviar id para evitar duplicata no front. */
+export interface NewMessagePayload {
+  id: string;
+  projectId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  fileUrl?: string;
+  fileStoragePath?: string;
+  sender?: { id: string; name?: string; role?: string };
 }
 
 export interface Review {

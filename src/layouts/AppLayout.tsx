@@ -10,13 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle } from "lucide-react";
+import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare } from "lucide-react";
 import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
 
 const clientNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/projetos", label: "Projetos", icon: Briefcase },
+  { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/novo-briefing", label: "Novo briefing", icon: Briefcase },
 ];
 
@@ -24,6 +25,7 @@ const professionalNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/meu-perfil", label: "Meu perfil", icon: User },
   { to: "/app/projetos", label: "Projetos", icon: Briefcase },
+  { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/pagamentos", label: "Pagamentos", icon: Wallet },
 ];
 
