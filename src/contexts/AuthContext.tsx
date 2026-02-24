@@ -14,6 +14,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   signup: (data: { name: string; email: string; password: string; role: "CLIENT" | "PROFESSIONAL"; phone?: string }) => Promise<void>;
+  signupAndLogin: (data: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
   updateUser: (partial: Partial<User>) => void;
@@ -109,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (bootstrap) {
       setState((s) => ({
         ...s,
-        user: bootstrap,
+        user: { ...bootstrap, role: bootstrap.role as Role },
         loading: false,
         isAuthenticated: true,
       }));
@@ -151,6 +152,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const signupAndLogin = useCallback(
+    async (data: { name: string; email: string; password: string }) => {
+      await api.post("/auth/signup", { ...data, role: "CLIENT" });
+      // Immediately sign in after creating account
+      const response = await api.post("/auth/signin", { email: data.email, password: data.password });
+      const payload = response.data?.data ?? response.data;
+      const { user: rawUser, accessToken } = payload;
+      if (!rawUser || !accessToken) throw new Error("Resposta de login inválida");
+      const user = normalizeUser(rawUser as Record<string, unknown>);
+      setStoredToken(accessToken);
+      setBootstrapUser(user);
+      setState({
+        user,
+        clientProfile: null,
+        professionalProfile: null,
+        loading: false,
+        isAuthenticated: true,
+      });
+      await refreshMe({ clearTokenOnError: false });
+    },
+    [refreshMe]
+  );
+
   const logout = useCallback(() => {
     clearStoredToken();
     setState({ user: null, clientProfile: null, professionalProfile: null, loading: false, isAuthenticated: false });
@@ -167,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ...state,
     login,
     signup,
+    signupAndLogin,
     logout,
     refreshMe,
     updateUser,

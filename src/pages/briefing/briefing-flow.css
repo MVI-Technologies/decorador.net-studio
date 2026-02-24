@@ -1,0 +1,235 @@
+/* ===================================================
+   Briefing Gamificado – Animações & Estilos
+   =================================================== */
+
+/* XP Progress Bar */
+.bf-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: hsl(210, 20%, 94%);
+  overflow: hidden;
+  position: relative;
+}
+
+.bf-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(347, 74%, 54%) 0%, hsl(326, 75%, 58%) 60%, hsl(38, 92%, 50%) 100%);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+.bf-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: bf-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes bf-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Card flutuante (selecionado) */
+.bf-card {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              border-color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bf-card:hover {
+  transform: translateY(-2px);
+}
+
+.bf-card.bf-card--active {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px -8px hsla(345, 97%, 59%, 0.25);
+}
+
+/* Toggle switch satisfatório */
+.bf-toggle-track {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: hsl(210, 20%, 88%);
+  transition: background 0.25s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bf-toggle-track--on {
+  background: linear-gradient(90deg, hsl(347, 74%, 54%), hsl(326, 75%, 58%));
+}
+
+.bf-toggle-knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.bf-toggle-track--on .bf-toggle-knob {
+  transform: translateX(22px);
+}
+
+/* Slide-in entre steps */
+.bf-step-enter {
+  animation: bf-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes bf-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Quiz image card "burst" on click */
+.bf-quiz-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.bf-quiz-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 32px -4px rgba(0,0,0,0.15);
+}
+
+.bf-quiz-card:active {
+  transform: scale(0.97);
+}
+
+.bf-quiz-card--chosen {
+  animation: bf-card-burst 0.5s ease forwards;
+}
+
+@keyframes bf-card-burst {
+  0% { transform: scale(1); opacity: 1; }
+  30% { transform: scale(1.08); }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+/* Painel lateral gradiente */
+.bf-side-panel {
+  background: linear-gradient(180deg, hsl(347, 74%, 54%) 0%, hsl(326, 75%, 58%) 100%);
+  color: white;
+  border-radius: 1.5rem;
+  padding: 2rem;
+}
+
+/* Confetti burst simple */
+.bf-confetti {
+  animation: bf-confetti-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bf-confetti-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Botões coloridos */
+.bf-btn-green {
+  background: hsl(142, 71%, 45%);
+  color: white;
+  border: none;
+}
+.bf-btn-green:hover {
+  background: hsl(142, 71%, 40%);
+}
+
+.bf-btn-red {
+  background: hsl(0, 84%, 60%);
+  color: white;
+  border: none;
+}
+.bf-btn-red:hover {
+  background: hsl(0, 84%, 55%);
+}
+
+.bf-btn-blue {
+  background: hsl(207, 90%, 54%);
+  color: white;
+  border: none;
+}
+.bf-btn-blue:hover {
+  background: hsl(207, 90%, 48%);
+}
+
+/* Checkpoint fullscreen */
+.bf-checkpoint {
+  position: relative;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+
+.bf-checkpoint-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.6));
+}
+
+/* Upload zone */
+.bf-upload-zone {
+  border: 2px dashed hsl(210, 20%, 80%);
+  border-radius: 1rem;
+  padding: 2rem;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.bf-upload-zone:hover {
+  border-color: hsl(345, 97%, 59%);
+  background: hsl(345, 97%, 59%, 0.03);
+}
+
+/* Deadline card colors */
+.bf-deadline-rocket {
+  border-color: hsl(0, 84%, 60%);
+  background: hsla(0, 84%, 60%, 0.05);
+}
+.bf-deadline-rocket.bf-card--active {
+  border-color: hsl(0, 84%, 60%);
+  background: hsla(0, 84%, 60%, 0.12);
+  box-shadow: 0 12px 40px -8px hsla(0, 84%, 60%, 0.2);
+}
+
+.bf-deadline-smile {
+  border-color: hsl(142, 71%, 45%);
+  background: hsla(142, 71%, 45%, 0.05);
+}
+.bf-deadline-smile.bf-card--active {
+  border-color: hsl(142, 71%, 45%);
+  background: hsla(142, 71%, 45%, 0.12);
+  box-shadow: 0 12px 40px -8px hsla(142, 71%, 45%, 0.2);
+}
+
+.bf-deadline-zen {
+  border-color: hsl(207, 90%, 54%);
+  background: hsla(207, 90%, 54%, 0.05);
+}
+.bf-deadline-zen.bf-card--active {
+  border-color: hsl(207, 90%, 54%);
+  background: hsla(207, 90%, 54%, 0.12);
+  box-shadow: 0 12px 40px -8px hsla(207, 90%, 54%, 0.2);
+}

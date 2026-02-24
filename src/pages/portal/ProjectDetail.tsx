@@ -22,10 +22,100 @@ import { Label } from "@/components/ui/label";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { projectStatusLabel } from "@/lib/projectStatus";
 import type { Project, ProjectStatus, Review } from "@/types/api";
-import { ArrowLeft, Check, RefreshCw, Star, MessageSquare } from "lucide-react";
+import { ArrowLeft, Check, RefreshCw, Star, MessageSquare, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const REVISION_LIMIT = 3;
+
+/* ================================================================== */
+/* Briefing Summary Card                                                 */
+/* ================================================================== */
+
+function BriefingSummaryCard({ project, isClient }: { project: Project; isClient: boolean }) {
+  const title = project.title ?? "";
+  const isCompleto = title.startsWith("Projeto Completo");
+  const isConsultoria = title.startsWith("Consultoria");
+  const isLegacy = !isCompleto && !isConsultoria;
+
+  const bulletMode = isCompleto ? "completo" : isConsultoria ? "consultoria" : null;
+
+  // Parse requirements string into bullets: "Key: value; Key2: value2"
+  const reqString = (project as Project & { requirements?: string }).requirements ?? "";
+  const bullets = reqString
+    ? reqString.split("; ").filter(Boolean)
+    : [];
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-5 max-w-2xl">
+      <div className="flex items-center gap-2 mb-4">
+        <FileText className="h-5 w-5 text-primary shrink-0" />
+        <h3 className="font-semibold text-foreground text-base">Resumo do Briefing</h3>
+        {isLegacy && (
+          <span className="ml-2 rounded-full border border-muted-foreground/40 px-2 py-0.5 text-xs text-muted-foreground">
+            Briefing legado
+          </span>
+        )}
+        {isCompleto && (
+          <span className="ml-2 rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary font-medium">
+            Projeto Completo 🏗️
+          </span>
+        )}
+        {isConsultoria && (
+          <span className="ml-2 rounded-full border border-blue-300/40 bg-blue-50 px-2 py-0.5 text-xs text-blue-600 font-medium">
+            Consultoria 💬
+          </span>
+        )}
+      </div>
+
+      {bullets.length > 0 ? (
+        <ul className="space-y-1.5">
+          {bullets.map((b, i) => {
+            const [key, ...rest] = b.split(": ");
+            const val = rest.join(": ");
+            return (
+              <li key={i} className="flex gap-2 text-sm">
+                <span className="text-muted-foreground shrink-0">•</span>
+                <span>
+                  {val ? (
+                    <><span className="font-medium text-foreground">{key}:</span>{" "}<span className="text-muted-foreground">{val}</span></>
+                  ) : (
+                    <span className="text-muted-foreground">{key}</span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {isLegacy ? "Briefing criado no sistema antigo." : "Nenhum detalhe registrado."}
+        </p>
+      )}
+
+      {isClient && (
+        <div className="mt-4 flex gap-2">
+          {isLegacy ? (
+            <>
+              <Link
+                to="/comecar"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Refazer briefing →
+              </Link>
+            </>
+          ) : (
+            <Link
+              to={`/comecar/${bulletMode}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+            >
+              Editar briefing
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -218,6 +308,9 @@ export default function ProjectDetail() {
           </Button>
         </div>
       )}
+
+      {/* Briefing Summary Card */}
+      <BriefingSummaryCard project={project} isClient={isClient} />
 
       {isClient && project.payment?.status === "PENDING" && (
         <Card className="mt-6 max-w-xl border-primary/30 bg-primary/5">

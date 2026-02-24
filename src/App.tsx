@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/layouts/AppLayout";
@@ -15,9 +15,10 @@ import Cadastro from "./pages/auth/Cadastro";
 import EsqueciSenha from "./pages/auth/EsqueciSenha";
 import Explorar from "./pages/explorar/Explorar";
 import ExplorarDetail from "./pages/explorar/ExplorarDetail";
+import BriefingChooser from "./pages/briefing/BriefingChooser";
+import BriefingFlow from "./pages/briefing/BriefingFlow";
 
 import Dashboard from "./pages/portal/Dashboard";
-import NovoBriefing from "./pages/portal/NovoBriefing";
 import EditarBriefing from "./pages/portal/EditarBriefing";
 import ProjectList from "./pages/portal/ProjectList";
 import ProjectDetail from "./pages/portal/ProjectDetail";
@@ -33,7 +34,7 @@ import PagamentosRepassar from "./pages/portal/PagamentosRepassar";
 import ProfissionaisPendentes from "./pages/portal/ProfissionaisPendentes";
 import Saques from "./pages/portal/Saques";
 import Usuarios from "./pages/portal/Usuarios";
-import OnboardingWizard from "./pages/portal/OnboardingWizard";
+
 import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
 import Chats from "./pages/portal/Chats";
 import Propostas from "./pages/portal/Propostas";
@@ -57,16 +58,12 @@ const App = () => (
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="/ui-kit" element={<UiKit />} />
+            <Route path="/comecar" element={<BriefingChooser />} />
+            <Route path="/comecar/projeto-completo" element={<BriefingFlow mode="completo" />} />
+            <Route path="/comecar/consultoria" element={<BriefingFlow mode="consultoria" />} />
 
-            {/* Onboarding fullscreen (sem AppLayout) */}
-            <Route
-              path="/app/onboarding"
-              element={
-                <ProtectedRoute allowedRoles={["CLIENT"]}>
-                  <OnboardingWizard />
-                </ProtectedRoute>
-              }
-            />
+            {/* Redirects antigos */}
+            <Route path="/app/onboarding" element={<Navigate to="/comecar" replace />} />
 
             {/* Portal (logado) */}
             <Route
@@ -79,7 +76,7 @@ const App = () => (
             >
               <Route index element={<Dashboard />} />
               <Route path="perfil" element={<Perfil />} />
-              <Route path="novo-briefing" element={<NovoBriefing />} />
+              <Route path="novo-briefing" element={<Navigate to="/comecar" replace />} />
               <Route path="projetos" element={<ProjectList />} />
               <Route path="chats" element={<Chats />} />
               <Route path="propostas" element={<Propostas />} />

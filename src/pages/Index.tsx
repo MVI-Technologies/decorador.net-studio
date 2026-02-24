@@ -46,7 +46,7 @@ function HeroSection() {
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg" className="rounded-full px-8 shadow-brand">
-              <Link to="/cadastro">Começar agora</Link>
+              <Link to="/comecar">Começar agora</Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="rounded-full px-8">
               <Link to="/explorar">Ver projetos</Link>

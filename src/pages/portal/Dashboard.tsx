@@ -1,20 +1,18 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight, Sparkles } from "lucide-react";
+import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight, Sparkles, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { adminApi } from "@/lib/admin-api";
 import type { Project, PaginatedResponse } from "@/types/api";
 import { projectStatusLabel } from "@/lib/projectStatus";
-import { useFirstAccess } from "@/hooks/useFirstAccess";
 
 export default function Dashboard() {
   const { user, loading, clientProfile } = useAuth();
-  const { isFirstAccess } = useFirstAccess();
 
   const { data: projectsData } = useQuery({
     queryKey: user?.role === "CLIENT" ? ["projects"] : ["professional-projects"],
@@ -34,11 +32,16 @@ export default function Dashboard() {
 
   const raw = projectsData?.data;
   const projects = Array.isArray(raw) ? raw : (raw?.data ?? []);
+  const isLoadingProjects = !projectsData && user?.role === "CLIENT";
 
-  // Redirect CLIENT to onboarding on first access.
-  // Guard: only redirect once the profile is fully loaded from the API.
-  if (!loading && user?.role === "CLIENT" && clientProfile !== null && isFirstAccess()) {
-    return <Navigate to="/app/onboarding" replace />;
+  // No more redirect — zero-state in dashboard handles onboarding
+
+  if (user?.role === "CLIENT" && isLoadingProjects) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (user?.role === "ADMIN") {
@@ -157,10 +160,10 @@ export default function Dashboard() {
             <CardTitle>Começar agora</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button asChild className="rounded-full shadow-brand w-full">
-              <Link to="/app/novo-briefing">
+          <Button asChild className="rounded-full shadow-brand w-full">
+              <Link to="/comecar">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Novo briefing
+                Novo projeto ✨
               </Link>
             </Button>
           </CardContent>
@@ -172,23 +175,43 @@ export default function Dashboard() {
 
 function ClientZeroState() {
   return (
-    <div className="flex flex-col items-center gap-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-8 py-10 text-center">
       <div className="flex h-20 w-20 items-center justify-center rounded-full gradient-brand shadow-brand">
         <Sparkles className="h-10 w-10 text-white" />
       </div>
       <div>
-        <h3 className="text-xl font-bold text-foreground">Seu espaço dos sonhos te espera</h3>
-        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-          Crie seu primeiro projeto e encontre o decorador ideal para transformar seu ambiente.
+        <h3 className="text-xl font-bold text-foreground">Vamos criar seu primeiro projeto? 🙂✨</h3>
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+          Escolha o tipo de projeto e comece sua transformação.
         </p>
       </div>
-      <Button asChild className="rounded-full shadow-brand px-8" size="lg">
-        <Link to="/app/onboarding">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Criar meu primeiro projeto
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
+        <Link
+          to="/comecar/projeto-completo"
+          className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 transition-all hover:border-primary/50 hover:shadow-brand hover:-translate-y-1"
+        >
+          <span className="text-4xl">🏗️</span>
+          <span className="text-sm font-bold text-foreground">Projeto Completo</span>
+          <span className="text-xs text-muted-foreground text-center">Obra, marcenaria, iluminação e mais</span>
+          <span className="text-xs font-semibold text-primary group-hover:gap-2 flex items-center gap-1 transition-all">
+            Começar →
+          </span>
         </Link>
-      </Button>
-      <p className="text-xs text-muted-foreground">Leva menos de 2 minutos ✨</p>
+        <Link
+          to="/comecar/consultoria"
+          className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-blue-300/20 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:border-blue-400/50 hover:shadow-md hover:-translate-y-1"
+        >
+          <span className="text-4xl">💬</span>
+          <span className="text-sm font-bold text-foreground">Consultoria</span>
+          <span className="text-xs text-muted-foreground text-center">Ideias, orientação e recomendações</span>
+          <span className="text-xs font-semibold text-blue-600 group-hover:gap-2 flex items-center gap-1 transition-all">
+            Começar →
+          </span>
+        </Link>
+      </div>
+
+      <p className="text-xs text-muted-foreground">Leva menos de 5 minutos ✨</p>
     </div>
   );
 }
