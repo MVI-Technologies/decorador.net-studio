@@ -173,17 +173,6 @@ export default function ProjectDetail() {
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
-  const acceptMutation = useMutation({
-    mutationFn: async () => {
-      await api.post(`/professionals/me/projects/${id}/accept`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", id] });
-      toast.success("Projeto aceito!");
-    },
-    onError: (err) => toast.error(getApiErrorMessage(err)),
-  });
-
   const deliverMutation = useMutation({
     mutationFn: async (message?: string) => {
       await api.post(`/professionals/me/projects/${id}/deliver`, { message });
@@ -260,8 +249,10 @@ export default function ProjectDetail() {
   const canRequestRevision = isClient && status === "DELIVERED" && revisionCount < REVISION_LIMIT;
   const canApprove = isClient && status === "DELIVERED";
   const canReview = isClient && status === "COMPLETED";
-  const canAccept = isProfessional && status === "PROFESSIONAL_ASSIGNED";
-  const canDeliver = isProfessional && (status === "IN_PROGRESS" || status === "REVISION_REQUESTED");
+  const canDeliver =
+    isProfessional && (status === "IN_PROGRESS" || status === "REVISION_REQUESTED");
+  const isProfessionalWaitingPayment =
+    isProfessional && status === "PROFESSIONAL_ASSIGNED" && project.payment?.status === "PENDING";
   const showChat =
     isAdmin ||
     status === "MATCHING" ||
@@ -350,30 +341,24 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {canAccept && (
-        <Card className="mt-8 max-w-xl">
+      {isProfessionalWaitingPayment && (
+        <Card className="mt-8 max-w-xl border-muted">
           <CardHeader>
             <CardTitle>Projeto atribuído a você</CardTitle>
-            <CardDescription>Aceite para começar a trabalhar.</CardDescription>
+            <CardDescription>
+              Pagamento do cliente em confirmação pelo admin. Por favor, aguarde antes de começar o projeto.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button
-              className="rounded-full shadow-brand"
-              onClick={() => acceptMutation.mutate()}
-              disabled={acceptMutation.isPending}
-            >
-              <Check className="mr-2 h-4 w-4" />
-              Aceitar projeto
-            </Button>
-          </CardContent>
         </Card>
       )}
 
       {canDeliver && (
         <Card className="mt-8 max-w-xl">
           <CardHeader>
-            <CardTitle>Entregar projeto</CardTitle>
-            <CardDescription>Envie o resultado para o cliente.</CardDescription>
+            <CardTitle>Projeto atribuído a você</CardTitle>
+            <CardDescription>
+              Pagamento confirmado pelo admin. Pode começar o projeto. Quando estiver pronto, clique em Entregar.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
