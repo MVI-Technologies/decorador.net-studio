@@ -13,6 +13,7 @@ import UiKit from "./pages/UiKit";
 import Login from "./pages/auth/Login";
 import Cadastro from "./pages/auth/Cadastro";
 import EsqueciSenha from "./pages/auth/EsqueciSenha";
+import ResetarSenha from "./pages/auth/ResetarSenha";
 import Explorar from "./pages/explorar/Explorar";
 import ExplorarDetail from "./pages/explorar/ExplorarDetail";
 import BriefingChooser from "./pages/briefing/BriefingChooser";
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="/redefinir-senha" element={<ResetarSenha />} />
             <Route path="/ui-kit" element={<UiKit />} />
             <Route path="/comecar" element={<BriefingChooser />} />
             <Route path="/comecar/projeto-completo" element={<BriefingFlow mode="completo" />} />

@@ -54,10 +54,14 @@ function HeroSection() {
           </div>
         </div>
 
-        <div className="relative hidden md:block">
-          
-          <div className="aspect-[4/3] rounded-2xl bg-muted shadow-soft" aria-hidden>
-            <img src="/images/premium_photo-1688125414656-ab91164cbd1e.avif" alt="Hero" className="w-full h-full object-cover rounded-2xl" />
+        {/* Image — visible on all screen sizes */}
+        <div className="relative w-full">
+          <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted shadow-soft">
+            <img
+              src="/images/premium_photo-1688125414656-ab91164cbd1e.avif"
+              alt="Hero"
+              className="h-full w-full object-cover"
+            />
           </div>
         </div>
       </div>
