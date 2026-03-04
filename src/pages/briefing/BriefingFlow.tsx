@@ -162,35 +162,34 @@ interface QuizImage {
 }
 
 const quizImages: QuizImage[] = [
-  // Moderno (3)
-  { src: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80", style: "Moderno", label: "Sala moderna e clean" },
-  { src: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80", style: "Moderno", label: "Cozinha moderna integrada" },
-  { src: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80", style: "Moderno", label: "Quarto moderno minimalista" },
+  // Moderno (2)
+  { src: "https://i0.wp.com/pachecos.com/wp-content/uploads/2025/05/1.jpg?fit=2000%2C1500&ssl=1", style: "Moderno", label: "Sala moderna e clean" },
+  { src: "https://finger.ind.br/wp-content/uploads/2020/12/quando-investir-em-uma-cozinha-integrada-2-scaled.jpg", style: "Moderno", label: "Cozinha moderna integrada" },
   // Minimalista (2)
-  { src: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80", style: "Minimalista", label: "Quarto minimalista aconchegante" },
-  { src: "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=800&q=80", style: "Minimalista", label: "Workspace minimalista zen" },
+  { src: "https://finger.ind.br/wp-content/uploads/2024/06/7-dicas-de-decoracao-para-um-quarto-minimalista-1024x683.jpg", style: "Minimalista", label: "Quarto moderno minimalista" },
+  { src: "https://balancethroughsimplicity.com/wp-content/uploads/2023/04/Minimalist-Workspace.jpg", style: "Minimalista", label: "Workspace minimalista zen" },
   // Rústico (2)
-  { src: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", style: "Rústico", label: "Cozinha rústica charmosa" },
-  { src: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80", style: "Rústico", label: "Varanda rústica acolhedora" },
+  { src: "https://blog.archtrends.com/wp-content/uploads/2020/01/30151931/cozinha-ru%CC%81stica-portobello.jpg", style: "Rústico", label: "Cozinha rústica charmosa" },
+  { src: "https://amaisd.com.br/wp-content/themes/theme/blog_images/varanda_26.jpg", style: "Rústico", label: "Varanda rústica acolhedora" },
   // Industrial (2)
-  { src: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80", style: "Industrial", label: "Loft industrial contemporâneo" },
-  { src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80", style: "Industrial", label: "Escritório industrial moderno" },
+  { src: "https://midias.jornalcruzeiro.com.br/wp-content/uploads/2019/04/Lofts-contempor%C3%A2neos-3.jpg", style: "Industrial", label: "Loft industrial" },
+  { src: "https://ladytex.com.br/wp-content/uploads/2024/01/Escritorio-com-arquitetura-industrial-entenda-mais-sobre-essa-tendencia-5.jpg", style: "Industrial", label: "Escritório industrial" },
   // Clássico (2)
-  { src: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80", style: "Clássico", label: "Sala de jantar clássica" },
-  { src: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80", style: "Clássico", label: "Living elegante clássico" },
+  { src: "https://cdnm.westwing.com.br/glossary/uploads/br/2015/10/13022805/Mesa-de-Jantar-Cl%C3%A1ssica-branca-com-poltronas-p%C3%A9-de-palito-fonte-unsplash-c-a4052.jpg", style: "Clássico", label: "Sala de jantar clássica" },
+  { src: "https://italicohomes.com/wp-content/uploads/2025/03/living-room-luxuoso-transforme-sua-casa-classica-com-estilo-neoclassico-1.jpg", style: "Clássico", label: "Living elegante clássico" },
   // Boho (3)
-  { src: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80", style: "Boho", label: "Living boho vibrante" },
-  { src: "https://images.unsplash.com/photo-1615529328331-f8917597711f?w=800&q=80", style: "Boho", label: "Quarto boho aconchegante" },
-  { src: "https://images.unsplash.com/photo-1617104678098-de229db51175?w=800&q=80", style: "Boho", label: "Cantinho boho criativo" },
+  { src: "https://landmarksarchitects.com/wp-content/uploads/2024/10/modern-bohemian-interior-livingroom1032024.jpg", style: "Boho", label: "Living boho vibrante" },
+  { src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQcR2jn9ES0K3yHM14xgCV26L6LAz1m5LNFIQ&s", style: "Boho", label: "Quarto boho aconchegante" },
+  { src: "https://cdnm.westwing.com.br/glossary/uploads/br/2023/04/15205743/Decoracao-boho-com-projeto-Westwing-Design.-Fonte-Westwing-1.jpg", style: "Boho", label: "Cantinho boho criativo" },
   // Escandinavo (2)
-  { src: "https://images.unsplash.com/photo-1616047006789-b7af5afb8c20?w=800&q=80", style: "Escandinavo", label: "Sala escandinava luminosa" },
-  { src: "https://images.unsplash.com/photo-1598928506311-c55ez389e856?w=800&q=80", style: "Escandinavo", label: "Quarto escandinavo clean" },
+  { src: "https://thumbs.dreamstime.com/b/sala-de-estar-e-jantar-escandinavos-brilhantes-estilosos-escandinava-estilosa-com-molho-menta-design-maconha-cartaz-mapear-plantas-176793134.jpg", style: "Escandinavo", label: "Sala escandinava luminosa" },
+  { src: "https://thumbs.dreamstime.com/b/modelo-do-quarto-escandinavo-estilo-bedroom-com-sotaque-aconchegante-de-madeira-leve-e-arte-estilosa-parede-um-len%C3%A7%C3%B3is-bege-346448177.jpg", style: "Escandinavo", label: "Quarto escandinavo clean" },
   // Tropical (2)
-  { src: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&q=80", style: "Tropical", label: "Sala tropical relaxante" },
-  { src: "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80", style: "Tropical", label: "Varanda tropical vibrante" },
+  { src: "https://cdnm.westwing.com.br/glossary/uploads/br/2015/06/18055038/Sala-com-decora%C3%A7%C3%A3o-Tropical-sof%C3%A1-verde-almofadas-com-estampa-de-folhas-vasos-com-plantas-e-cortina-estampada-com-folhas-pinterest-c-a8033.jpg", style: "Tropical", label: "Sala tropical relaxante" },
+  { src: "https://images.ctfassets.net/qfxflpv0atz9/3x6xQT7vDzDtm1ZKnN2aUv/0b8490c241952febfeb7a314056d8ac0/20210429104342-blog_VarandaTropical_header.png", style: "Tropical", label: "Varanda tropical vibrante" },
   // Contemporâneo (2)
   { src: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80", style: "Contemporâneo", label: "Casa contemporânea sofisticada" },
-  { src: "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800&q=80", style: "Contemporâneo", label: "Cozinha contemporânea elegante" },
+  { src: "https://finger.ind.br/wp-content/uploads/2023/09/cozinha-elegante-como-criar-um-ambiente-sofisticado-4-1024x683.jpg", style: "Contemporâneo", label: "Cozinha contemporânea elegante" },
 ];
 
 const QUIZ_BATCH_SIZE = 6;
@@ -911,18 +910,20 @@ function StepProjetoCompleto({
                   active ? "bf-card--active border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"
                 )}
               >
-                <span className="text-3xl shrink-0">{card.icon}</span>
-                <span className={cn("font-semibold text-sm flex-1", active ? "text-primary" : "text-foreground")}>
+              <span className="text-3xl shrink-0">{card.icon}</span>
+                <span className={cn("font-semibold text-sm flex-1 min-w-0", active ? "text-primary" : "text-foreground")}>
                   {card.label}
                 </span>
-                <ToggleSwitch active={active} />
+                <span className="shrink-0 ml-2">
+                  <ToggleSwitch active={active} />
+                </span>
               </button>
             );
           })}
         </div>
 
         {/* Smaller cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {intentionCards.filter((c) => !c.big).map((card) => {
             const active = intentions.includes(card.id);
             return (
@@ -935,11 +936,13 @@ function StepProjetoCompleto({
                   active ? "bf-card--active border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"
                 )}
               >
-                <span className="text-xl shrink-0">{card.icon}</span>
-                <span className={cn("font-medium text-xs flex-1", active ? "text-primary" : "text-foreground")}>
+              <span className="text-xl shrink-0">{card.icon}</span>
+                <span className={cn("font-medium text-xs flex-1 min-w-0", active ? "text-primary" : "text-foreground")}>
                   {card.label}
                 </span>
-                <ToggleSwitch active={active} />
+                <span className="shrink-0 ml-2">
+                  <ToggleSwitch active={active} />
+                </span>
               </button>
             );
           })}

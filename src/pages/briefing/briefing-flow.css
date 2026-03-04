@@ -39,6 +39,7 @@
               border-color 0.2s ease;
   cursor: pointer;
   user-select: none;
+  overflow: hidden;
 }
 
 .bf-card:hover {

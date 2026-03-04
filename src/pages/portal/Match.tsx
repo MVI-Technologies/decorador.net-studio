@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, ArrowLeft, MessageSquare, MapPin } from "lucide-react";
+import { Star, ArrowLeft, MessageSquare, MapPin, Loader2 } from "lucide-react";
 import type { Project, ProfessionalProfile } from "@/types/api";
 import { useState } from "react";
 
@@ -27,7 +27,7 @@ export default function Match() {
   const [selectedProf, setSelectedProf] = useState<ProfessionalProfile | null>(null);
   const [message, setMessage] = useState("");
 
-  const { data: project } = useQuery({
+  const { data: project, isLoading: isLoadingProject } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
       const res = await api.get(`/projects/${id}`);
@@ -37,7 +37,7 @@ export default function Match() {
     enabled: !!id,
   });
 
-  const { data: matchList = [] } = useQuery({
+  const { data: matchList = [], isLoading: isLoadingMatch } = useQuery({
     queryKey: ["match", id],
     queryFn: async () => {
       const res = await api.get(`/projects/${id}/match`);
@@ -108,7 +108,11 @@ export default function Match() {
         Profissionais compatíveis com seu briefing. Solicite uma proposta e converse antes de contratar.
       </p>
 
-      {matchList.length === 0 ? (
+      {(isLoadingProject || isLoadingMatch) ? (
+        <div className="mt-16 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : matchList.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
           <p className="text-muted-foreground">
             Nenhum profissional compatível no momento. Tente ajustar o briefing.
