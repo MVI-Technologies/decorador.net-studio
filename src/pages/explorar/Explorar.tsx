@@ -116,7 +116,7 @@ export default function Explorar() {
         )}
 
         <div className="mt-10 text-center">
-          <Button asChild variant="outline" className="rounded-full px-6" asChild>
+          <Button asChild variant="outline" className="rounded-full px-6">
             <Link to="/">Ver mais na home</Link>
           </Button>
         </div>
