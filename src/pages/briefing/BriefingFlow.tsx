@@ -109,8 +109,15 @@ function reducer(state: BriefingState, action: Action): BriefingState {
   switch (action.type) {
     case "SET_STEP":
       return { ...state, step: action.step };
-    case "QUIZ_PICK":
-      return { ...state, quizPicks: [...state.quizPicks, action.idx] };
+    case "QUIZ_PICK": {
+      const already = state.quizPicks.includes(action.idx);
+      return {
+        ...state,
+        quizPicks: already
+          ? state.quizPicks.filter((i) => i !== action.idx)
+          : [...state.quizPicks, action.idx],
+      };
+    }
     case "SET_DETECTED_STYLE":
       return { ...state, detectedStyle: action.style };
     case "SET_CHOSEN_STYLES":
@@ -316,7 +323,13 @@ export default function BriefingFlow({
   }, [state.step]);
 
   const back = useCallback(() => {
-    if (state.step > 1) dispatch({ type: "SET_STEP", step: state.step - 1 });
+    if (state.step > 1) {
+      if (state.step === 2) {
+        // Reset the quiz so the user can redo it on step 1
+        dispatch({ type: "LOAD", state: { quizPicks: [], detectedStyle: "", chosenStyles: [] } });
+      }
+      dispatch({ type: "SET_STEP", step: state.step - 1 });
+    }
   }, [state.step]);
 
   const handleSubmit = useCallback(async () => {
@@ -439,8 +452,9 @@ export default function BriefingFlow({
             <StepQuiz
               picks={state.quizPicks}
               onPick={(idx) => {
+                const isUnpick = state.quizPicks.includes(idx);
                 dispatch({ type: "QUIZ_PICK", idx });
-                if (state.quizPicks.length + 1 >= 5) {
+                if (!isUnpick && state.quizPicks.length + 1 >= 5) {
                   const allPicks = [...state.quizPicks, idx];
                   const counts: Record<string, number> = {};
                   allPicks.forEach((i) => {
@@ -553,7 +567,7 @@ export default function BriefingFlow({
         </div>
 
         {/* Navigation (except quiz / checkpoint which auto-advance) */}
-        {![1, 4].includes(state.step) && (
+        {!(state.step === 1 || (state.step === 4 && mode === "completo")) && (
           <div className="mt-10 flex items-center justify-between">
             {state.step > 1 ? (
               <Button variant="ghost" onClick={back} className="gap-2 rounded-full bf-btn-blue text-white hover:text-white">
@@ -614,9 +628,9 @@ function StepQuiz({
             <button
               key={idx}
               type="button"
-              disabled={chosen || remaining <= 0}
+              disabled={!chosen && remaining <= 0}
               onClick={() => {
-                setJustPicked(idx);
+                if (!chosen) setJustPicked(idx);
                 onPick(idx);
               }}
               className={cn(

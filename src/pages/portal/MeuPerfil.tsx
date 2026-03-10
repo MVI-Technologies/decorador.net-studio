@@ -32,7 +32,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { professionalStatusLabel } from "@/lib/projectStatus";
 import { STYLE_OPTIONS } from "@/lib/styles";
 import type { ProfessionalProfile, Style, PortfolioItem } from "@/types/api";
-import { Plus, Trash2, Image as ImageIcon, Check, Upload, Link as LinkIcon } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, Check, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 
@@ -72,11 +72,9 @@ export default function MeuPerfil() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
-  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
   const [newStyleName, setNewStyleName] = useState("");
+  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
   const [newPortfolioTitle, setNewPortfolioTitle] = useState("");
-  const [newPortfolioImageUrl, setNewPortfolioImageUrl] = useState("");
-  const [portfolioSource, setPortfolioSource] = useState<"url" | "file">("url");
   const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
   const [portfolioDrag, setPortfolioDrag] = useState(false);
   const portfolioFileInputRef = useRef<HTMLInputElement>(null);
@@ -187,9 +185,7 @@ export default function MeuPerfil() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professional-profile"] });
       setNewPortfolioTitle("");
-      setNewPortfolioImageUrl("");
       setPortfolioFile(null);
-      setPortfolioSource("url");
       setPortfolioDialogOpen(false);
       toast.success("Item adicionado ao portfólio!");
     },
@@ -199,15 +195,6 @@ export default function MeuPerfil() {
   const handleAddPortfolio = async () => {
     const title = newPortfolioTitle.trim();
     if (!title) return;
-    if (portfolioSource === "url") {
-      const imageUrl = newPortfolioImageUrl.trim();
-      if (!imageUrl) {
-        toast.error("Informe a URL do site ou da imagem.");
-        return;
-      }
-      addPortfolioMutation.mutate({ title, imageUrl });
-      return;
-    }
     if (!portfolioFile) {
       toast.error("Selecione ou arraste um arquivo.");
       return;
@@ -226,9 +213,7 @@ export default function MeuPerfil() {
 
   const resetPortfolioDialog = () => {
     setNewPortfolioTitle("");
-    setNewPortfolioImageUrl("");
     setPortfolioFile(null);
-    setPortfolioSource("url");
   };
 
   const deletePortfolioMutation = useMutation({
@@ -277,7 +262,18 @@ export default function MeuPerfil() {
     <div className="container py-8">
       <h1 className="text-display-md text-foreground">Meu perfil</h1>
       <p className="mt-2 text-muted-foreground">Dados do perfil profissional, estilos e portfólio.</p>
-      <Badge variant="secondary" className="mt-4">{professionalStatusLabel[profile.status] ?? profile.status}</Badge>
+      <Badge
+        className={cn(
+          "mt-4 border-0",
+          profile.status === "APPROVED" || profile.status === "ACTIVE"
+            ? "bg-green-100 text-green-700"
+            : profile.status === "PENDING"
+            ? "bg-red-100 text-red-600"
+            : "bg-muted text-muted-foreground"
+        )}
+      >
+        {professionalStatusLabel[profile.status] ?? profile.status}
+      </Badge>
 
       <Tabs defaultValue="perfil" className="mt-8">
         <TabsList className="grid w-full max-w-md grid-cols-3">
@@ -579,7 +575,7 @@ export default function MeuPerfil() {
                   <DialogHeader>
                     <DialogTitle>Novo item no portfólio</DialogTitle>
                     <DialogDescription>
-                      Adicione por URL/site ou envie um arquivo (imagem ou documento).
+                      Envie uma imagem ou documento do seu projeto (PDF, JPG, PNG).
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -592,42 +588,12 @@ export default function MeuPerfil() {
                       />
                     </div>
                     <div>
-                      <p className="text-sm font-medium mb-2">Imagem ou link</p>
-                      <div className="flex gap-2 mb-3">
-                        <Button
-                          type="button"
-                          variant={portfolioSource === "url" ? "default" : "outline"}
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => setPortfolioSource("url")}
-                        >
-                          <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
-                          URL ou site
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={portfolioSource === "file" ? "default" : "outline"}
-                          size="sm"
-                          className="rounded-full"
-                          onClick={() => setPortfolioSource("file")}
-                        >
-                          <Upload className="h-3.5 w-3.5 mr-1.5" />
-                          Arquivo
-                        </Button>
-                      </div>
-                      {portfolioSource === "url" ? (
-                        <Input
-                          placeholder="URL da imagem ou do site (ex.: https://...)"
-                          value={newPortfolioImageUrl}
-                          onChange={(e) => setNewPortfolioImageUrl(e.target.value)}
-                        />
-                      ) : (
-                        <div
+                      <p className="text-sm font-medium mb-3">Arquivo</p>
+                      <div
                           ref={portfolioDropZoneRef}
-                          className={cn(
+                        className={cn(
                             "rounded-xl border-2 border-dashed p-6 text-center transition-colors",
-                            portfolioDrag && "border-primary bg-primary/5",
-                            !portfolioDrag && "border-border bg-muted/30 hover:bg-muted/50"
+                            portfolioDrag ? "border-primary bg-primary/5" : "border-primary/40 bg-primary/5 hover:bg-primary/10"
                           )}
                           onDragOver={(e) => {
                             e.preventDefault();
@@ -691,7 +657,6 @@ export default function MeuPerfil() {
                             </>
                           )}
                         </div>
-                      )}
                     </div>
                     <Button
                       className="w-full rounded-full shadow-brand"
@@ -699,7 +664,7 @@ export default function MeuPerfil() {
                       disabled={
                         addPortfolioMutation.isPending ||
                         !newPortfolioTitle.trim() ||
-                        (portfolioSource === "url" ? !newPortfolioImageUrl.trim() : !portfolioFile)
+                        !portfolioFile
                       }
                     >
                       {addPortfolioMutation.isPending ? "Adicionando..." : "Adicionar"}

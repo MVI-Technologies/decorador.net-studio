@@ -8,6 +8,7 @@ import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFirstAccess, type OnboardingDraft } from "@/hooks/useFirstAccess";
+import { Emoji } from "@/components/ui/Emoji";
 
 /* ------------------------------------------------------------------ */
 /* Data                                                                 */
@@ -44,15 +45,15 @@ const budgetRanges = [
 ];
 
 const priorityOptions = [
-  { value: "economico", label: "💰 Econômico", desc: "Foco em custo-benefício" },
-  { value: "equilibrado", label: "⚖️ Equilibrado", desc: "Qualidade com bom preço" },
-  { value: "premium", label: "✨ Premium", desc: "O melhor, sem compromisso" },
+  { value: "economico", emoji: "💰", label: "Econômico", desc: "Foco em custo-benefício" },
+  { value: "equilibrado", emoji: "⚖️", label: "Equilibrado", desc: "Qualidade com bom preço" },
+  { value: "premium", emoji: "✨", label: "Premium", desc: "O melhor, sem compromisso" },
 ];
 
 const deadlineOptions = [
-  { value: "urgente", label: "🔥 Urgente", desc: "Menos de 1 mês" },
-  { value: "medio", label: "📅 1 a 3 meses", desc: "Tranquilo, mas logo" },
-  { value: "flexivel", label: "😌 Sem pressa", desc: "Quando ficar pronto" },
+  { value: "urgente", emoji: "🔥", label: "Urgente", desc: "Menos de 1 mês" },
+  { value: "medio", emoji: "📅", label: "1 a 3 meses", desc: "Tranquilo, mas logo" },
+  { value: "flexivel", emoji: "😌", label: "Sem pressa", desc: "Quando ficar pronto" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -78,7 +79,7 @@ const stepMeta = [
   },
   {
     title: "Qual é o seu prazo?",
-    sub: "Última pergunta! 🎉 Depois disso, mostramos quem pode te ajudar.",
+    sub: (<>Última pergunta! <Emoji>🎉</Emoji> Depois disso, mostramos quem pode te ajudar.</>),
   },
 ];
 
@@ -363,7 +364,7 @@ function StepEstilos({
                 <Check className="h-3 w-3 text-primary-foreground" />
               </span>
             )}
-            <span className="text-3xl" role="img" aria-label={value}>{emoji}</span>
+            <span className="text-3xl" role="img" aria-label={value}><Emoji>{emoji}</Emoji></span>
             <span className={cn("text-sm font-medium", active ? "text-primary" : "text-foreground")}>
               {value}
             </span>
@@ -416,7 +417,7 @@ function StepOrcamento({
       <div>
         <p className="mb-3 text-sm font-semibold text-foreground">Sua prioridade</p>
         <div className="flex flex-col gap-3">
-          {priorityOptions.map(({ value, label, desc }) => {
+          {priorityOptions.map(({ value, emoji, label, desc }) => {
             const active = priority === value;
             return (
               <button
@@ -429,7 +430,9 @@ function StepOrcamento({
                 )}
               >
                 <div>
-                  <p className={cn("font-semibold", active ? "text-primary" : "text-foreground")}>{label}</p>
+                  <p className={cn("font-semibold", active ? "text-primary" : "text-foreground")}>
+                    <Emoji>{emoji}</Emoji> {label}
+                  </p>
                   <p className="text-xs text-muted-foreground">{desc}</p>
                 </div>
                 {active && <Check className="h-5 w-5 shrink-0 text-primary" />}
@@ -517,7 +520,7 @@ function ToggleCard({
         active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40 hover:bg-muted/50"
       )}
     >
-      <span className="text-2xl" role="img">{emoji}</span>
+      <span className="text-2xl" role="img"><Emoji>{emoji}</Emoji></span>
       <div className="flex-1">
         <p className={cn("font-semibold", active ? "text-primary" : "text-foreground")}>{label}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
@@ -543,7 +546,7 @@ function StepPrazo({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      {deadlineOptions.map(({ value, label, desc }) => {
+      {deadlineOptions.map(({ value, emoji, label, desc }) => {
         const active = selected === value;
         return (
           <button
@@ -556,7 +559,9 @@ function StepPrazo({
             )}
           >
             <div>
-              <p className={cn("text-lg font-semibold", active ? "text-primary" : "text-foreground")}>{label}</p>
+              <p className={cn("text-lg font-semibold", active ? "text-primary" : "text-foreground")}>
+                <Emoji>{emoji}</Emoji> {label}
+              </p>
               <p className="text-sm text-muted-foreground">{desc}</p>
             </div>
             {active && <Check className="h-5 w-5 shrink-0 text-primary" />}

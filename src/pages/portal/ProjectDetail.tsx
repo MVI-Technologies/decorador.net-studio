@@ -57,7 +57,7 @@ function BriefingSummaryCard({ project, isClient }: { project: Project; isClient
         )}
         {isCompleto && (
           <span className="ml-2 rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary font-medium">
-            Projeto Completo 🏗️
+            Projeto Completo 🏠
           </span>
         )}
         {isConsultoria && (

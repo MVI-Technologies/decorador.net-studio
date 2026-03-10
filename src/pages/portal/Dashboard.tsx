@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Emoji } from "@/components/ui/Emoji";
 import { Briefcase, PlusCircle, User, Wallet, Shield, ArrowRight, Sparkles, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -163,7 +164,7 @@ export default function Dashboard() {
           <Button asChild className="rounded-full shadow-brand w-full">
               <Link to="/comecar">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Novo projeto ✨
+                Novo projeto <Emoji>✨</Emoji>
               </Link>
             </Button>
           </CardContent>
@@ -180,7 +181,7 @@ function ClientZeroState() {
         <Sparkles className="h-10 w-10 text-white" />
       </div>
       <div>
-        <h3 className="text-xl font-bold text-foreground">Vamos criar seu primeiro projeto? 🙂✨</h3>
+        <h3 className="text-xl font-bold text-foreground">Vamos criar seu primeiro projeto? <Emoji>🙂</Emoji><Emoji>✨</Emoji></h3>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
           Escolha o tipo de projeto e comece sua transformação.
         </p>
@@ -191,7 +192,7 @@ function ClientZeroState() {
           to="/comecar/projeto-completo"
           className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 transition-all hover:border-primary/50 hover:shadow-brand hover:-translate-y-1"
         >
-          <span className="text-4xl">🏗️</span>
+          <span className="text-4xl"><Emoji>🏠</Emoji></span>
           <span className="text-sm font-bold text-foreground">Projeto Completo</span>
           <span className="text-xs text-muted-foreground text-center">Obra, marcenaria, iluminação e mais</span>
           <span className="text-xs font-semibold text-primary group-hover:gap-2 flex items-center gap-1 transition-all">
@@ -202,7 +203,7 @@ function ClientZeroState() {
           to="/comecar/consultoria"
           className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-blue-300/20 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:border-blue-400/50 hover:shadow-md hover:-translate-y-1"
         >
-          <span className="text-4xl">💬</span>
+          <span className="text-4xl"><Emoji>💬</Emoji></span>
           <span className="text-sm font-bold text-foreground">Consultoria</span>
           <span className="text-xs text-muted-foreground text-center">Ideias, orientação e recomendações</span>
           <span className="text-xs font-semibold text-blue-600 group-hover:gap-2 flex items-center gap-1 transition-all">
@@ -211,7 +212,7 @@ function ClientZeroState() {
         </Link>
       </div>
 
-      <p className="text-xs text-muted-foreground">Leva menos de 5 minutos ✨</p>
+      <p className="text-xs text-muted-foreground">Leva menos de 5 minutos <Emoji>✨</Emoji></p>
     </div>
   );
 }
