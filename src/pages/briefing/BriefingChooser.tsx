@@ -5,7 +5,7 @@ import { Emoji } from "@/components/ui/Emoji";
 import "../briefing/briefing-flow.css";
 
 /* ================================================================== */
-/* BriefingChooser — Tela de escolha do tipo de briefing               */
+/* BriefingChooser — Tela de escolha do tipo de briefing         !     */
 /* ================================================================== */
 
 const options = [
