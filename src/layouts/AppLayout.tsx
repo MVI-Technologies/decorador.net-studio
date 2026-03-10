@@ -78,7 +78,7 @@ export function AppLayout() {
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
                 d
               </span>
-              <span className="hidden font-semibold text-foreground sm:inline">Decorador.net</span>
+              <span className="hidden font-semibold text-foreground sm:inline">Decor.net</span>
             </Link>
             <nav className="hidden sm:flex items-center gap-1 overflow-x-auto py-1 min-w-0 flex-1">
               {nav.map((item) => (

@@ -42,7 +42,7 @@ function HeroSection() {
             online
           </h1>
           <p className="max-w-md text-lg text-muted-foreground">
-            Conectamos você aos melhores decoradores do Brasil. Seu ambiente dos sonhos, do briefing à entrega.
+            Conectamos você aos melhores decoradores do Brasil. O seu ambiente dos sonhos feito por um profissional de verdade.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg" className="rounded-full px-8 shadow-brand">
@@ -167,7 +167,7 @@ function PricingSection() {
         <div className="mx-auto max-w-2xl overflow-hidden rounded-3xl gradient-brand p-[1px]">
           <div className="rounded-3xl gradient-brand px-8 py-14 text-center text-white">
             <h2 className="text-display-lg">Projeto completo</h2>
-            <p className="mt-2 text-sm opacity-80">por ambiente • pagamento único</p>
+            <p className="mt-2 text-sm opacity-80">A partir de 199,90R$ </p>
             <Button asChild size="lg" className="mt-8 rounded-full bg-white px-10 text-primary shadow-brand hover:bg-white/90">
               <Link to="/cadastro">Começar meu projeto</Link>
             </Button>

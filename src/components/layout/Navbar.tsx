@@ -16,7 +16,7 @@ export function Navbar() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1 text-xl font-bold tracking-tight text-foreground">
-          <span className="text-primary">decorador</span>
+          <span className="text-primary">decor</span>
           <span className="text-muted-foreground">.net</span>
         </Link>
 
