@@ -42,6 +42,8 @@ export type WithdrawalStatus = "REQUESTED" | "PROCESSING" | "COMPLETED" | "REJEC
 
 export interface User {
   id: string;
+  /** ID público sequencial atribuído pelo backend. Ex.: #C001 (cliente) */
+  publicId?: string;
   email: string;
   name: string;
   role: Role;
@@ -49,10 +51,16 @@ export interface User {
   avatarUrl?: string;
   /** Se false, o usuário não pode fazer login. */
   isActive?: boolean;
+  /** Relacionamento opcional para acessar o profile em listagens admin */
+  clientProfile?: ClientProfile;
+  /** Relacionamento opcional para acessar o profile em listagens admin */
+  professionalProfile?: ProfessionalProfile;
 }
 
 export interface ClientProfile {
   id: string;
+  /** ID público sequencial atribuído pelo backend. Ex.: #C001 */
+  publicId?: string;
   userId: string;
   address?: string;
   city?: string;
@@ -79,6 +87,8 @@ export interface PortfolioItem {
 
 export interface ProfessionalProfile {
   id: string;
+  /** ID público sequencial atribuído pelo backend. Ex.: #P001 */
+  publicId?: string;
   userId: string;
   displayName?: string;
   bio?: string;
@@ -88,6 +98,7 @@ export interface ProfessionalProfile {
   city?: string;
   state?: string;
   status: ProfessionalStatus;
+  instagram?: string;
   bankName?: string;
   bankAgency?: string;
   bankAccount?: string;
@@ -115,6 +126,8 @@ export interface Briefing {
 
 export interface Project {
   id: string;
+  /** ID público sequencial atribuído pelo backend. Ex.: #A001 */
+  publicId?: string;
   title: string;
   status: ProjectStatus;
   clientId: string;

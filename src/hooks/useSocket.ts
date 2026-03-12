@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { getStoredToken } from "@/lib/api";
 import type { NewMessagePayload } from "@/types/api";
+import { toast } from "sonner";
 
 const getSocketBaseUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
@@ -38,10 +39,14 @@ export function useSocketChat(projectId: string | null, userId: string | null) {
     socketRef.current = s;
     s.on("connect", () => setConnected(true));
     s.on("disconnect", () => setConnected(false));
+    s.on("exception", (err: { message?: string }) => {
+      if (err?.message) toast.error(err.message);
+    });
     s.emit("joinProject", { projectId });
     return () => {
       s.off("connect");
       s.off("disconnect");
+      s.off("exception");
     };
   }, [projectId, userId]);
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PublicIdBadge } from "@/components/ui/PublicIdBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -85,9 +86,17 @@ export default function ProfissionaisPendentes() {
                       {prof.displayName ?? prof.user?.name ?? "Decorador"}
                     </p>
                     <p className="text-xs text-muted-foreground">{prof.user?.email}</p>
+                    {prof.instagram && (
+                      <p className="text-xs font-medium text-pink-600 dark:text-pink-400 mt-0.5">
+                        @{prof.instagram.replace('@', '')}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Badge variant="secondary">Pendente</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <PublicIdBadge id={prof.publicId} />
+                  <Badge variant="secondary">Pendente</Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 {prof.bio && <p className="text-sm text-muted-foreground line-clamp-2">{prof.bio}</p>}

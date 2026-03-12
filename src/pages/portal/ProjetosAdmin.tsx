@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { adminApi } from "@/lib/admin-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PublicIdBadge } from "@/components/ui/PublicIdBadge";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Pagination,
@@ -98,7 +99,8 @@ export default function ProjetosAdmin() {
                         Cliente: {(p.client as { name?: string })?.name ?? p.clientId ?? "—"} ·{" "}
                         Profissional: {(p.professionalProfile?.user as { name?: string })?.name ?? (p.professionalProfileId ? "Atribuído" : "—")}
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <PublicIdBadge id={p.publicId} />
                         <Badge variant="secondary">
                           {projectStatusLabel[p.status] ?? p.status}
                         </Badge>

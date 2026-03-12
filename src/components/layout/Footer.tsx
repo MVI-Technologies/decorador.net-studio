@@ -19,7 +19,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Decor.net. Todos os direitos reservados.
+          © {new Date().getFullYear()} Decornet. Todos os direitos reservados.
         </div>
       </div>
     </footer>
