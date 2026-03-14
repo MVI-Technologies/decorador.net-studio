@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, CreditCard, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -37,8 +36,17 @@ export default function AssinaturaProfissional() {
     try {
       setSubmitting(true);
       const { data } = await api.post<SubscribeResponse>("/subscriptions/subscribe");
-      // Redirecionar para o Checkout do Mercado Pago
-      window.location.href = data.checkoutUrl;
+      
+      // O interceptor global do Axios já desembrulha { statusCode, message, data }
+      const url = data?.checkoutUrl;
+      if (!url) {
+        toast.error("Link de pagamento não retornado pelo servidor. Tente novamente.");
+        return;
+      }
+      
+      // Abre o checkout do Mercado Pago em nova aba
+      window.open(url, "_blank");
+      toast.success("Redirecionando para o Mercado Pago...");
     } catch (error: any) {
       console.error("Erro ao gerar link de assinatura", error);
       toast.error(error.response?.data?.message || "Erro ao gerar link de pagamento.");

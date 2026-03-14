@@ -65,10 +65,23 @@ export function setOnUnauthorized(fn: () => void): void {
 }
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // O backend usa TransformInterceptor global que embrulha todas as respostas em:
+    // { statusCode, message, data: <payload real>, timestamp }
+    // Desembrulhamos aqui para que todo o frontend acesse res.data diretamente.
+    if (
+      res.data &&
+      typeof res.data === "object" &&
+      "data" in res.data &&
+      "statusCode" in res.data &&
+      "timestamp" in res.data
+    ) {
+      res.data = res.data.data;
+    }
+    return res;
+  },
   (err: AxiosError<{ message?: string; statusCode?: number }>) => {
     if (err.response?.status === 401) {
-      // Não executar logout/redirect se a requisição pediu para pular (ex: /auth/me durante login)
       const skipAuthRedirect = err.config?.skipAuthRedirect;
       if (!skipAuthRedirect) {
         clearStoredToken();
