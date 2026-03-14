@@ -5,6 +5,7 @@ export const projectStatusLabel: Record<ProjectStatus, string> = {
   MATCHING: "Em busca de profissional",
   NEGOCIANDO: "Negociando",
   PROFESSIONAL_ASSIGNED: "Profissional atribuído",
+  AWAITING_PAYMENT: "Aguardando pagamento",
   IN_PROGRESS: "Em andamento",
   REVISION_REQUESTED: "Revisão solicitada",
   DELIVERED: "Entregue",

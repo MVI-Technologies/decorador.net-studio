@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { adminApi } from "@/lib/admin-api";
 import type { PaymentPendingTransfer } from "@/types/api";
-import { Wallet, ArrowRight } from "lucide-react";
+import { Wallet, ArrowRight, AlertCircle } from "lucide-react";
 
 function formatBRL(value: number) {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
@@ -44,6 +44,13 @@ export default function PagamentosRepassar() {
       <p className="mt-2 text-muted-foreground">
         Pagamentos já recebidos (em escrow). Após repassar ao profissional fora do sistema, marque como pago.
       </p>
+
+      <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-4 flex items-start gap-3 text-amber-800">
+        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+        <p className="text-sm">
+          <strong>Aviso de Prazo:</strong> O repasse referente aos projetos finalizados deve ser efetuado na conta bancária do profissional em até <strong>7 dias úteis</strong>. Fique atento aos prazos para evitar atrasos.
+        </p>
+      </div>
 
       {list.length === 0 ? (
         <EmptyState
@@ -88,12 +95,23 @@ export default function PagamentosRepassar() {
                       Chave PIX não cadastrada. Peça ao profissional para cadastrar a chave PIX no perfil.
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    {payment.escrowStartedAt
-                      ? `Em escrow desde: ${new Date(payment.escrowStartedAt).toLocaleDateString("pt-BR")} · `
-                      : ""}
-                    ID: {payment.id} · Repasse em até 4 dias úteis
-                  </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {payment.escrowStartedAt
+                        ? `Em escrow desde: ${new Date(payment.escrowStartedAt).toLocaleDateString("pt-BR")}`
+                        : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ID: {payment.id} · Repasse em até 7 dias úteis
+                    </p>
+                    {payment.escrowStartedAt && (() => {
+                      const daysPassed = Math.floor((new Date().getTime() - new Date(payment.escrowStartedAt).getTime()) / (1000 * 3600 * 24));
+                      if (daysPassed >= 7) {
+                        return <p className="text-xs font-semibold text-destructive mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Atenção: Repasse pendente há {daysPassed} dias (limite próximo ou excedido!)</p>
+                      } else if (daysPassed >= 5) {
+                        return <p className="text-xs font-semibold text-amber-600 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Fique atento: Repasse pendente há {daysPassed} dias.</p>
+                      }
+                      return null;
+                    })()}
                 </div>
                 <Button
                   size="sm"
