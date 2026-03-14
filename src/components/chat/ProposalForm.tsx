@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getApiErrorMessage } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -14,7 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { DollarSign } from "lucide-react";
+import { DollarSign, AlertCircle, Loader2 } from "lucide-react";
+import type { AdminPlatformSettings } from "@/types/api";
 
 interface ProposalFormProps {
   projectId: string;
@@ -29,9 +30,20 @@ export function ProposalForm({ projectId, open, onOpenChange }: ProposalFormProp
   const [estimatedDays, setEstimatedDays] = useState("");
   const [notes, setNotes] = useState("");
 
+  const { data: platformSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ["platform-settings"],
+    queryFn: async () => {
+      const { data } = await api.get<AdminPlatformSettings>("/admin/settings/platform");
+      return data;
+    },
+  });
+
+  const platformFeePercentage = platformSettings?.platformFeePercentage ?? 35; // Default 35% fallback
+
   const mutation = useMutation({
     mutationFn: async () => {
-      const num = parseFloat(price.replace(",", "."));
+      const cleanValue = price.replace(/\./g, "").replace(",", ".");
+      const num = parseFloat(cleanValue);
       if (isNaN(num) || num <= 0) throw new Error("Informe um valor válido.");
       const msg = notes.trim().slice(0, 2000) || undefined;
       await api.post(`/proposals/${projectId}`, {
@@ -84,6 +96,30 @@ export function ProposalForm({ projectId, open, onOpenChange }: ProposalFormProp
               onChange={(e) => setPrice(e.target.value)}
               className="mt-1.5"
             />
+            {(() => {
+              if (isLoadingSettings) return <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Carregando taxas da plataforma...</div>;
+              
+              const cleanValue = price.replace(/\./g, "").replace(",", ".");
+              const num = parseFloat(cleanValue);
+              if (!isNaN(num) && num > 0) {
+                const discount = num * (platformFeePercentage / 100);
+                const finalAmount = num - discount;
+                return (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 pr-4 text-sm text-amber-900">
+                    <p className="flex items-center gap-2 font-medium mb-1">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      Resumo da sua proposta
+                    </p>
+                    <ul className="space-y-1 ml-6 text-xs text-amber-800 list-disc">
+                      <li><strong>Valor enviado ao cliente:</strong> R$ {num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                      <li><strong>Taxa da plataforma ({platformFeePercentage}%):</strong> - R$ {discount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                      <li className="pt-1 mt-1 font-bold border-t border-amber-200/50">Você receberá livre: R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                    </ul>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           <div>

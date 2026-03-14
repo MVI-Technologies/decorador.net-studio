@@ -15,7 +15,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { adminApi } from "@/lib/admin-api";
 import type { Withdrawal } from "@/types/api";
-import { Wallet, Check, X } from "lucide-react";
+import { Wallet, Check, X, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 export default function Saques() {
@@ -66,6 +66,13 @@ export default function Saques() {
       <h1 className="text-display-md text-foreground">Saques pendentes</h1>
       <p className="mt-2 text-muted-foreground">Processar solicitações de saque dos profissionais.</p>
 
+      <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-4 flex items-start gap-3 text-amber-800">
+        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+        <p className="text-sm">
+          <strong>Aviso de Prazo:</strong> O repasse referente aos saques solicitados deve ser efetuado na conta bancária do profissional em até <strong>7 dias úteis</strong> a partir da data de solicitação. Fique atento aos prazos para evitar atrasos.
+        </p>
+      </div>
+
       {list.length === 0 ? (
         <EmptyState
           icon={Wallet}
@@ -83,6 +90,15 @@ export default function Saques() {
                   <p className="text-sm text-muted-foreground">
                     ID: {w.id} · {new Date(w.createdAt).toLocaleString("pt-BR")}
                   </p>
+                  {(() => {
+                    const daysPassed = Math.floor((new Date().getTime() - new Date(w.createdAt).getTime()) / (1000 * 3600 * 24));
+                    if (daysPassed >= 7) {
+                      return <p className="text-xs font-semibold text-destructive mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Atenção: Solicitado há {daysPassed} dias (limite de 7 dias úteis próximo ou excedido!)</p>
+                    } else if (daysPassed >= 5) {
+                      return <p className="text-xs font-semibold text-amber-600 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Fique atento: Solicitado há {daysPassed} dias.</p>
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="flex gap-2">
                   <Button

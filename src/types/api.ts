@@ -348,6 +348,7 @@ export interface PaymentPendingTransfer {
 export interface AdminPlatformSettings {
   professionalMonthlyFee: number;
   platformFeePercentage: number;
+  maxInstallments?: number;
 }
 
 /** Resposta de GET /subscriptions/status */
