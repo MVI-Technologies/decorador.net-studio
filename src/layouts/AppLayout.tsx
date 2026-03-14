@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare, DollarSign } from "lucide-react";
+import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare, DollarSign, Settings, CreditCard } from "lucide-react";
 import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
 import { useChatUnread } from "@/hooks/useChatUnread";
@@ -31,6 +31,7 @@ const professionalNav = [
   { to: "/app/propostas", label: "Propostas", icon: DollarSign },
   { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/pagamentos", label: "Pagamentos", icon: Wallet },
+  { to: "/app/assinatura", label: "Mensalidade", icon: CreditCard },
 ];
 
 const adminNav = [
@@ -42,6 +43,7 @@ const adminNav = [
   { to: "/app/profissionais-pendentes", label: "Profissionais", icon: User },
   { to: "/app/saques", label: "Saques", icon: Wallet },
   { to: "/app/usuarios", label: "Usuários", icon: Shield },
+  { to: "/app/configuracoes-plataforma", label: "Taxas", icon: Settings },
 ];
 
 function getNav(role: Role) {

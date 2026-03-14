@@ -22,13 +22,25 @@ import { Label } from "@/components/ui/label";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { projectStatusLabel } from "@/lib/projectStatus";
 import type { Project, ProjectStatus, Review } from "@/types/api";
-import { ArrowLeft, Check, RefreshCw, Star, MessageSquare, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  RefreshCw,
+  Star,
+  MessageSquare,
+  FileText,
+  CreditCard,
+  UserCheck,
+  ExternalLink,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 
 const REVISION_LIMIT = 3;
 
 /* ================================================================== */
-/* Briefing Summary Card                                                 */
+/* Briefing Summary Card                                                */
 /* ================================================================== */
 
 function BriefingSummaryCard({ project, isClient }: { project: Project; isClient: boolean }) {
@@ -39,7 +51,6 @@ function BriefingSummaryCard({ project, isClient }: { project: Project; isClient
 
   const bulletMode = isCompleto ? "completo" : isConsultoria ? "consultoria" : null;
 
-  // Parse requirements string into bullets: "Key: value; Key2: value2"
   const reqString = (project as Project & { requirements?: string }).requirements ?? "";
   const bullets = reqString
     ? reqString.split("; ").filter(Boolean)
@@ -117,6 +128,125 @@ function BriefingSummaryCard({ project, isClient }: { project: Project; isClient
   );
 }
 
+/* ================================================================== */
+/* Awaiting Payment Banner                                              */
+/* Exibido quando status === "AWAITING_PAYMENT"                         */
+/* ================================================================== */
+
+function AwaitingPaymentBanner({
+  project,
+}: {
+  project: Project;
+}) {
+  const professionalName =
+    project.selectedProfessional?.displayName ??
+    project.selectedProfessional?.user?.name ??
+    "Decorador selecionado";
+
+  const hasCheckoutUrl = !!project.paymentCheckoutUrl;
+
+  return (
+    <Card className="mt-6 max-w-2xl border-2 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-foreground">
+              Pagamento pendente
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Você selecionou{" "}
+              <strong className="text-foreground">{professionalName}</strong>.
+              Para que o projeto comece, complete o pagamento via Mercado Pago.
+            </p>
+
+            {project.price && (
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white dark:bg-amber-900/30 px-3 py-1.5 text-sm dark:border-amber-700">
+                <span className="text-muted-foreground">Valor:</span>
+                <span className="font-bold text-foreground">
+                  {project.price.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </span>
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              {hasCheckoutUrl ? (
+                <Button
+                  asChild
+                  className="rounded-full shadow-brand gap-2"
+                  size="sm"
+                >
+                  <a href={project.paymentCheckoutUrl!} target="_self">
+                    <CreditCard className="h-4 w-4" />
+                    Ir para pagamento
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  className="rounded-full shadow-brand gap-2"
+                  size="sm"
+                >
+                  <Link to={`/app/projetos/${project.id}/selecionar-profissional`}>
+                    <CreditCard className="h-4 w-4" />
+                    Ir para pagamento
+                  </Link>
+                </Button>
+              )}
+
+              {/* Métodos aceitos */}
+              <div className="flex items-center gap-1.5">
+                {["PIX", "Débito", "Crédito"].map((m) => (
+                  <Badge key={m} variant="secondary" className="text-xs">
+                    {m}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              O projeto só iniciará após a confirmação automática do pagamento.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ================================================================== */
+/* Professional Selected Banner                                         */
+/* Exibido para o profissional quando status === "AWAITING_PAYMENT"    */
+/* ================================================================== */
+
+function ProfessionalAwaitingPaymentBanner() {
+  return (
+    <Card className="mt-8 max-w-xl border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <UserCheck className="h-5 w-5 text-amber-600" />
+          Você foi selecionado para este projeto
+        </CardTitle>
+        <CardDescription>
+          O cliente selecionou você e está finalizando o pagamento via Mercado
+          Pago. Assim que o pagamento for confirmado, o projeto iniciará
+          automaticamente.
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
+/* ================================================================== */
+/* Main Component                                                       */
+/* ================================================================== */
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -144,6 +274,12 @@ export default function ProjectDetail() {
       return (payload?.project ?? payload) as Project;
     },
     enabled: !!id,
+    // Polling quando pagamento aguardado — para capturar webhook de confirmação
+    refetchInterval: (query) => {
+      const d = query.state.data as Project | undefined;
+      if (d?.status === "AWAITING_PAYMENT") return 8_000;
+      return false;
+    },
   });
 
   const { data: myReview } = useQuery({
@@ -251,19 +387,43 @@ export default function ProjectDetail() {
   const canReview = isClient && status === "COMPLETED";
   const canDeliver =
     isProfessional && (status === "IN_PROGRESS" || status === "REVISION_REQUESTED");
-  const isProfessionalWaitingPayment =
-    isProfessional && status === "PROFESSIONAL_ASSIGNED" && project.payment?.status === "PENDING";
+
+  // AWAITING_PAYMENT: profissional selecionado mas pagamento ainda pendente
+  const isAwaitingPayment = status === "AWAITING_PAYMENT";
+
+  // Exibe o banner de "profissional selecionado + aguadando pagamento" para
+  // o profissional que de fato foi selecionado (selectedProfessionalId)
+  const isProfessionalSelectedAndWaiting =
+    isProfessional &&
+    isAwaitingPayment &&
+    project.selectedProfessionalId === user?.id; // ou via professionalProfile
+
+  // Compatibilidade com fluxo legado (PROFESSIONAL_ASSIGNED + payment PENDING)
+  const isProfessionalWaitingPaymentLegacy =
+    isProfessional &&
+    status === "PROFESSIONAL_ASSIGNED" &&
+    project.payment?.status === "PENDING";
+
   const showChat =
     isAdmin ||
     status === "MATCHING" ||
     status === "NEGOCIANDO" ||
     status === "PROFESSIONAL_ASSIGNED" ||
+    status === "AWAITING_PAYMENT" ||
     status === "IN_PROGRESS" ||
     status === "REVISION_REQUESTED" ||
     status === "DELIVERED" ||
     status === "APPROVED" ||
     status === "COMPLETED" ||
     status === "CANCELLED";
+
+  // Badge color
+  const statusBadgeClass =
+    status === "AWAITING_PAYMENT"
+      ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+      : status === "IN_PROGRESS"
+      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+      : undefined;
 
   return (
     <div className="container py-8">
@@ -285,13 +445,44 @@ export default function ProjectDetail() {
           <h1 className="text-display-md text-foreground">{project.title}</h1>
           <Badge
             variant={status === "CANCELLED" ? "outline" : "secondary"}
-            className={status === "CANCELLED" ? "mt-2 border-muted-foreground/50 text-muted-foreground" : "mt-2"}
+            className={
+              status === "CANCELLED"
+                ? "mt-2 border-muted-foreground/50 text-muted-foreground"
+                : statusBadgeClass
+                ? `mt-2 border ${statusBadgeClass}`
+                : "mt-2"
+            }
           >
             {projectStatusLabel[status] ?? status}
           </Badge>
         </div>
+
+        {/* Botão "Selecionar decorador" — aparece em NEGOCIANDO para o cliente */}
+        {isClient &&
+          (status === "NEGOCIANDO" || status === "MATCHING") && (
+            <Button asChild className="rounded-full shadow-brand gap-2">
+              <Link to={`/app/projetos/${id}/selecionar-profissional`}>
+                <UserCheck className="h-4 w-4" />
+                Selecionar decorador
+              </Link>
+            </Button>
+          )}
       </div>
 
+      {/* AWAITING_PAYMENT: banner para o cliente continuar o pagamento */}
+      {isClient && isAwaitingPayment && (
+        <AwaitingPaymentBanner project={project} />
+      )}
+
+      {/* AWAITING_PAYMENT: banner para o profissional aguardar */}
+      {(isProfessionalSelectedAndWaiting || isProfessionalWaitingPaymentLegacy) && (
+        <ProfessionalAwaitingPaymentBanner />
+      )}
+
+      {/* Briefing Summary Card */}
+      <BriefingSummaryCard project={project} isClient={isClient} />
+
+      {/* Fluxo legacy: briefing_submitted / matching → escolher decorador */}
       {isClient && (status === "BRIEFING_SUBMITTED" || status === "MATCHING") && (
         <div className="mt-6">
           <Button asChild className="rounded-full shadow-brand">
@@ -300,10 +491,8 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* Briefing Summary Card */}
-      <BriefingSummaryCard project={project} isClient={isClient} />
-
-      {isClient && project.payment?.status === "PENDING" && (
+      {/* Fluxo legacy: pagamento PIX manual */}
+      {isClient && project.payment?.status === "PENDING" && status !== "AWAITING_PAYMENT" && (
         <Card className="mt-6 max-w-xl border-primary/30 bg-primary/5">
           <CardContent className="flex flex-row items-center justify-between gap-4 p-6">
             <div>
@@ -341,12 +530,13 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {isProfessionalWaitingPayment && (
+      {/* Profissional: projeto atribuído legado (PROFESSIONAL_ASSIGNED, sem payment PENDING) */}
+      {isProfessional && status === "PROFESSIONAL_ASSIGNED" && !project.payment && (
         <Card className="mt-8 max-w-xl border-muted">
           <CardHeader>
             <CardTitle>Projeto atribuído a você</CardTitle>
             <CardDescription>
-              Pagamento do cliente em confirmação pelo admin. Por favor, aguarde antes de começar o projeto.
+              Aguarde a confirmação do pagamento pelo administrador antes de começar.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -357,7 +547,7 @@ export default function ProjectDetail() {
           <CardHeader>
             <CardTitle>Projeto atribuído a você</CardTitle>
             <CardDescription>
-              Pagamento confirmado pelo admin. Pode começar o projeto. Quando estiver pronto, clique em Entregar.
+              Pagamento confirmado. Pode começar o projeto. Quando estiver pronto, clique em Entregar.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -496,7 +686,6 @@ export default function ProjectDetail() {
           </CardContent>
         </Card>
       )}
-
     </div>
   );
 }

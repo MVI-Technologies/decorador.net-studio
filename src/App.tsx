@@ -40,6 +40,10 @@ import ProjetosAdmin from "./pages/portal/ProjetosAdmin";
 import Chats from "./pages/portal/Chats";
 import Propostas from "./pages/portal/Propostas";
 import ProjetosDisponiveis from "./pages/portal/ProjetosDisponiveis";
+import SelectProfessional from "./pages/portal/SelectProfessional";
+import MercadoPagoReturn from "./pages/portal/MercadoPagoReturn";
+import AssinaturaProfissional from "./pages/portal/AssinaturaProfissional";
+import ConfiguracoesPlataforma from "./pages/portal/ConfiguracoesPlataforma";
 
 const queryClient = new QueryClient();
 
@@ -86,11 +90,15 @@ const App = () => (
               <Route path="projetos/:id" element={<ProjectDetail />} />
               <Route path="projetos/:id/editar-briefing" element={<EditarBriefing />} />
               <Route path="projetos/:id/match" element={<Match />} />
+              <Route path="projetos/:id/selecionar-profissional" element={<SelectProfessional />} />
               <Route path="projetos/:id/pagamento" element={<PaymentPix />} />
+              <Route path="projetos/:id/pagamento/:type" element={<MercadoPagoReturn />} />
               <Route path="projetos/:id/pronto" element={<DeliveryResult />} />
               <Route path="meu-perfil" element={<MeuPerfil />} />
+              <Route path="assinatura" element={<ProtectedRoute allowedRoles={["PROFESSIONAL"]}><AssinaturaProfissional /></ProtectedRoute>} />
               <Route path="pagamentos" element={<Pagamentos />} />
               <Route path="configuracoes-pix" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ConfiguracoesPix /></ProtectedRoute>} />
+              <Route path="configuracoes-plataforma" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ConfiguracoesPlataforma /></ProtectedRoute>} />
               <Route path="pagamentos-recebidos" element={<ProtectedRoute allowedRoles={["ADMIN"]}><PagamentosRecebidos /></ProtectedRoute>} />
               <Route path="pagamentos-repassar" element={<ProtectedRoute allowedRoles={["ADMIN"]}><PagamentosRepassar /></ProtectedRoute>} />
               <Route path="profissionais-pendentes" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ProfissionaisPendentes /></ProtectedRoute>} />

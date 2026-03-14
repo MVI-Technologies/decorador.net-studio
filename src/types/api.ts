@@ -7,12 +7,25 @@ export type ProjectStatus =
   | "MATCHING"
   | "NEGOCIANDO"
   | "PROFESSIONAL_ASSIGNED"
+  | "AWAITING_PAYMENT"
   | "IN_PROGRESS"
   | "REVISION_REQUESTED"
   | "DELIVERED"
   | "APPROVED"
   | "COMPLETED"
   | "CANCELLED";
+
+/** Status do pagamento retornado pelo Mercado Pago */
+export type MercadoPagoPaymentStatus =
+  | "pending"
+  | "approved"
+  | "authorized"
+  | "in_process"
+  | "in_mediation"
+  | "rejected"
+  | "cancelled"
+  | "refunded"
+  | "charged_back";
 
 export type ProposalStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "NEGOTIATING";
 
@@ -34,6 +47,7 @@ export interface Proposal {
 }
 
 export type ProfessionalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "SUSPENDED";
+export type ProfessionalSubscriptionStatus = "ACTIVE" | "INACTIVE" | "PAST_DUE" | "CANCELED";
 
 export type PaymentStatus = "PENDING" | "IN_ESCROW" | "RELEASED" | "REFUNDED" | "CANCELLED";
 
@@ -97,6 +111,8 @@ export interface ProfessionalProfile {
   user?: User;
   averageRating?: number;
   reviewCount?: number;
+  subscriptionStatus?: ProfessionalSubscriptionStatus;
+  subscriptionExpiresAt?: string;
 }
 
 export interface Briefing {
@@ -118,6 +134,31 @@ export interface Project {
   title: string;
   status: ProjectStatus;
   clientId: string;
+
+  /** ID do profissional selecionado pelo cliente (pós-negociação, antes do pagamento) */
+  selectedProfessionalId?: string;
+  selectedProfessional?: ProfessionalProfile;
+
+  /** Preço acordado do projeto */
+  price?: number;
+
+  // ── Campos Mercado Pago ─────────────────────────────────────────────
+  /** ID da preferência de pagamento criada no MP */
+  paymentPreferenceId?: string;
+  /** URL de checkout gerada pelo MP — redirecionar o cliente aqui */
+  paymentCheckoutUrl?: string;
+
+  /** ID do pagamento efetivado (após webhook de aprovação) */
+  paymentId?: string;
+  /** Status do pagamento (campo do MP) */
+  paymentStatus?: MercadoPagoPaymentStatus;
+  /** Método: 'pix' | 'credit_card' | 'debit_card' | 'account_money' */
+  paymentMethod?: string;
+  /** Número de parcelas (cartão de crédito) */
+  installments?: number;
+  /** Valor efetivamente transacionado */
+  transactionAmount?: number;
+
   professionalProfileId?: string;
   briefing?: Briefing;
   payment?: Payment;
@@ -129,6 +170,30 @@ export interface Project {
   revisionCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// ── Tipos auxiliares do fluxo de seleção + pagamento ────────────────────────
+
+/** Resposta de POST /projects/:id/select-professional */
+export interface SelectProfessionalResponse {
+  /** URL de checkout do Mercado Pago para redirecionar o cliente */
+  checkoutUrl: string;
+  /** ID da preferência gerada */
+  paymentPreferenceId: string;
+  project: Project;
+}
+
+/**
+ * Profissional que possui conversa ativa no projeto.
+ * Retornado por GET /projects/:id/chat-professionals
+ */
+export interface ChatProfessional {
+  professionalProfileId: string;
+  professionalProfile: ProfessionalProfile;
+  /** Total de mensagens trocadas neste projeto */
+  messageCount: number;
+  /** Data da última mensagem */
+  lastMessageAt: string;
 }
 
 export interface Payment {
@@ -277,4 +342,21 @@ export interface PaymentPendingTransfer {
   amountToTransfer: number;
   /** Data em que entrou em escrow */
   escrowStartedAt: string;
+}
+
+/** GET /admin/settings/platform */
+export interface AdminPlatformSettings {
+  professionalMonthlyFee: number;
+  platformFeePercentage: number;
+}
+
+/** Resposta de GET /subscriptions/status */
+export interface SubscriptionStatusResponse {
+  status: ProfessionalSubscriptionStatus;
+  expiresAt?: string;
+}
+
+/** Resposta de POST /subscriptions/subscribe */
+export interface SubscribeResponse {
+  checkoutUrl: string;
 }
