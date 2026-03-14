@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare, DollarSign } from "lucide-react";
+import { Menu, LayoutDashboard, Briefcase, User, LogOut, Wallet, Shield, KeyRound, Inbox, ArrowRightCircle, MessageSquare, DollarSign, Settings, CreditCard } from "lucide-react";
 import { cn, toAbsoluteAvatarUrl } from "@/lib/utils";
 import type { Role } from "@/types/api";
 import { useChatUnread } from "@/hooks/useChatUnread";
@@ -31,6 +31,7 @@ const professionalNav = [
   { to: "/app/propostas", label: "Propostas", icon: DollarSign },
   { to: "/app/chats", label: "Chats", icon: MessageSquare },
   { to: "/app/pagamentos", label: "Pagamentos", icon: Wallet },
+  { to: "/app/assinatura", label: "Mensalidade", icon: CreditCard },
 ];
 
 const adminNav = [
@@ -42,6 +43,7 @@ const adminNav = [
   { to: "/app/profissionais-pendentes", label: "Profissionais", icon: User },
   { to: "/app/saques", label: "Saques", icon: Wallet },
   { to: "/app/usuarios", label: "Usuários", icon: Shield },
+  { to: "/app/configuracoes-plataforma", label: "Taxas", icon: Settings },
 ];
 
 function getNav(role: Role) {
@@ -51,10 +53,23 @@ function getNav(role: Role) {
 }
 
 export function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, professionalProfile, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { chatsWithUnread } = useChatUnread();
+  const location = useLocation();
   const nav = user ? getNav(user.role) : [];
+
+  const isProfessional = user?.role === "PROFESSIONAL";
+  const isInactiveProfessional = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE" && professionalProfile?.subscriptionStatus !== "PAST_DUE" && professionalProfile?.status !== "PENDING_APPROVAL"; // PENDING_APPROVAL handles its own block or is allowed to browse? Wait, if they are APPROVED but not ACTIVE. Actually, let's just use "ACTIVE" for paid.
+  
+  // Mas se for apenas "INACTIVE" ou "CANCELED" ou "PAST_DUE", bloqueia dependendo da lógica. Assumindo que subscriptionStatus ACTIVE é o único permitido.
+  const isBlocked = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE";
+  
+  const inAllowedInactiveRoute = location.pathname.includes('/app/assinatura') || 
+                                 location.pathname.includes('/app/pagamentos') ||
+                                 location.pathname.includes('/app/perfil') ||
+                                 location.pathname.includes('/app/meu-perfil');
+
 
   const handleLogout = () => {
     logout();
@@ -177,8 +192,23 @@ export function AppLayout() {
         </Sheet>
       </header>
 
-      <main className="flex-1">
-        <Outlet />
+      <main className="flex-1 overflow-auto">
+        {isBlocked && !inAllowedInactiveRoute ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center min-h-[70vh] max-w-md mx-auto">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 mb-6">
+              <Shield className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-3xl font-bold mb-4 text-foreground">Acesso Bloqueado</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Sua assinatura profissional não está ativa. Para continuar acessando os projetos, enviando propostas e utilizando as demais funcionalidades, regularize sua mensalidade.
+            </p>
+            <Button asChild size="lg" className="w-full rounded-full shadow-brand sm:w-auto">
+              <Link to="/app/assinatura">Regularizar Mensalidade</Link>
+            </Button>
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
     </div>
   );
