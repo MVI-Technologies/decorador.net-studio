@@ -713,6 +713,15 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
         </div>
       </div>
 
+      {/* Educational Banner - Funcionalidade 2 */}
+      <div className="flex items-center gap-3 border-b border-border bg-yellow-50/80 px-4 py-3 dark:bg-yellow-950/20">
+        <Shield className="h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-500" />
+        <div className="text-sm text-yellow-800 dark:text-yellow-400">
+          <p className="font-semibold">Proteja-se contra fraudes</p>
+          <p>Para sua segurança, evite compartilhar contatos externos. Todas as conversas devem ocorrer dentro da plataforma.</p>
+        </div>
+      </div>
+
       {/* Awaiting proposal banner */}
       {showMatchingStatus && (
         <div className="flex items-center gap-3 border-b border-border bg-amber-50 px-4 py-3 dark:bg-amber-950/20">

@@ -24,7 +24,7 @@ export default function UiKit() {
       <div className="container py-10 space-y-16">
         <header>
           <h1 className="text-display-xl text-foreground">UI Kit</h1>
-          <p className="mt-2 text-muted-foreground">Design system do Decor.net — todos os componentes base.</p>
+          <p className="mt-2 text-muted-foreground">Design system do Decornet — todos os componentes base.</p>
         </header>
 
         {/* Typography */}

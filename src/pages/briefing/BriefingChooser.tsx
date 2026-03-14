@@ -57,7 +57,7 @@ export default function BriefingChooser() {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">Decor.net</h1>
+            <h1 className="text-lg font-bold text-foreground">Decornet</h1>
             <p className="text-xs text-muted-foreground">Seu projeto começa aqui <Emoji>✨</Emoji></p>
           </div>
         </div>

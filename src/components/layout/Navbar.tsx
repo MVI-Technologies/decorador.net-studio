@@ -15,9 +15,9 @@ export function Navbar() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-1 text-xl font-bold tracking-tight text-foreground">
+        <Link to="/" className="flex items-center gap-0.5 text-xl font-bold tracking-tight text-foreground">
           <span className="text-primary">decor</span>
-          <span className="text-muted-foreground">.net</span>
+          <span className="text-muted-foreground">net</span>
         </Link>
 
         {/* Desktop nav */}

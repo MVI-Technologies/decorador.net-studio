@@ -60,6 +60,7 @@ const profileSchema = z.object({
   experienceYears: z.coerce.number().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  instagram: z.string().optional(),
   bankName: z.string().optional(),
   bankAgency: z.string().optional(),
   bankAccount: z.string().optional(),
@@ -105,6 +106,7 @@ export default function MeuPerfil() {
           experienceYears: profile.experienceYears ?? undefined,
           city: profile.city ?? "",
           state: profile.state ?? "",
+          instagram: profile.instagram ?? "",
           bankName: profile.bankName ?? "",
           bankAgency: profile.bankAgency ?? "",
           bankAccount: profile.bankAccount ?? "",
@@ -359,6 +361,21 @@ export default function MeuPerfil() {
                       )}
                     />
                   </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="instagram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Instagram (opcional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="@seuinstagram" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={form.control}
                     name="cpfCnpj"
