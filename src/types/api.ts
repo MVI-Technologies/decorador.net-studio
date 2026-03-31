@@ -368,6 +368,7 @@ export interface AdminPlatformSettings {
 export interface SubscriptionStatusResponse {
   status: ProfessionalSubscriptionStatus;
   expiresAt?: string;
+  monthlyFee?: number;
 }
 
 /** Resposta de POST /subscriptions/subscribe */

@@ -21,7 +21,7 @@ export default function ConfiguracoesPlataforma() {
   const [saving, setSaving] = useState(false);
   
   const [form, setForm] = useState({
-    professionalMonthlyFee: 21.90,
+    professionalMonthlyFee: 1.00,
     platformFeePercentage: 15,
     maxInstallments: 12,
   });
@@ -35,7 +35,7 @@ export default function ConfiguracoesPlataforma() {
       setLoading(true);
       const { data } = await api.get<AdminPlatformSettings>("/admin/settings/platform");
       setForm({
-        professionalMonthlyFee: data.professionalMonthlyFee || 21.90,
+        professionalMonthlyFee: data.professionalMonthlyFee || 1.00,
         platformFeePercentage: data.platformFeePercentage || 15,
         maxInstallments: data.maxInstallments || 12,
       });

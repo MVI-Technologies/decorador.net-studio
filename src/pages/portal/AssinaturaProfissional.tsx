@@ -121,9 +121,10 @@ export default function AssinaturaProfissional() {
                 <div className="text-sm text-gray-400">Cobrado mensalmente via Mercado Pago</div>
               </div>
             </div>
-            {/* O valor seria melhor vir do backend, mas simplificaremos para a interface no momento */}
             <div className="text-right">
-              <div className="text-2xl font-bold text-white">R$ 21<span className="text-lg text-gray-400">,90</span></div>
+              <div className="text-2xl font-bold text-white">
+                R$ {(status?.monthlyFee || 1.00).toFixed(2).replace('.', ',')}
+              </div>
               <div className="text-sm text-gray-400">/ mês</div>
             </div>
           </div>
