@@ -145,7 +145,7 @@ export default function Usuarios() {
                         <PublicIdBadge id={u.publicId || u.clientProfile?.publicId || u.professionalProfile?.publicId} />
                         <Badge variant="secondary">{roleLabels[u.role] ?? u.role}</Badge>
                         {u.professionalProfile?.instagram && (
-                          <span className="text-xs font-medium text-pink-600 dark:text-pink-400">
+                          <span className="text-xs font-medium text-primary">
                             @{u.professionalProfile.instagram.replace('@', '')}
                           </span>
                         )}

@@ -99,7 +99,7 @@ export default function ResetarSenha() {
               </div>
             ) : done ? (
               <div className="flex flex-col items-center text-center gap-4">
-                <CheckCircle2 className="h-14 w-14 text-green-500" />
+                <CheckCircle2 className="h-14 w-14 text-status-success" />
                 <h1 className="text-display-md text-foreground">Senha redefinida!</h1>
                 <p className="text-sm text-muted-foreground">
                   Você será redirecionado para o login em instantes…

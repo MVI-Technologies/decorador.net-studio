@@ -32,8 +32,8 @@ type ReturnType = "sucesso" | "falha" | "pendente";
 const CONTENT = {
   sucesso: {
     icon: CheckCircle2,
-    iconClass: "text-emerald-500",
-    cardClass: "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30",
+    iconClass: "text-status-success",
+    cardClass: "border-2 border-status-success/20 bg-status-success/10",
     title: "Pagamento concluído!",
     description:
       "Seu pagamento foi processado. O projeto entrará em andamento assim que o Mercado Pago confirmar a transação (isso pode levar alguns instantes).",
@@ -41,8 +41,8 @@ const CONTENT = {
   },
   pendente: {
     icon: Clock,
-    iconClass: "text-amber-500",
-    cardClass: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30",
+    iconClass: "text-status-warning",
+    cardClass: "border-2 border-status-warning/20 bg-status-warning/10",
     title: "Pagamento em processamento",
     description:
       "Seu pagamento está sendo processado. Assim que for confirmado, o projeto entrará em andamento automaticamente. Você pode fechar esta página.",

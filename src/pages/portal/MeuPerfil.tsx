@@ -268,9 +268,9 @@ export default function MeuPerfil() {
         className={cn(
           "mt-4 border-0",
           profile.status === "APPROVED" || profile.status === "ACTIVE"
-            ? "bg-green-100 text-green-700"
+            ? "bg-status-success/10 text-status-success"
             : profile.status === "PENDING"
-            ? "bg-red-100 text-red-600"
+            ? "bg-destructive/10 text-destructive"
             : "bg-muted text-muted-foreground"
         )}
       >

@@ -141,9 +141,9 @@ export default function Pagamentos() {
                       Mínimo R$ {minWithdraw}. Saldo: R$ {balance.toFixed(2)}
                     </p>
                   </div>
-                  <div className="rounded-md bg-amber-50 border border-amber-200 p-3 flex items-start gap-2 text-amber-800">
-                    <p className="text-xs">
-                      <strong>Aviso:</strong> O pagamento será depositado em sua conta banária no prazo de <strong>até 7 dias úteis</strong> a partir do momento da solicitação.
+                  <div className="rounded-md bg-status-warning/10 border border-status-warning/20 p-3 flex items-start gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      <strong className="text-foreground">Aviso:</strong> O pagamento será depositado em sua conta banária no prazo de <strong className="text-foreground">até 7 dias úteis</strong> a partir do momento da solicitação.
                     </p>
                   </div>
                   <Button

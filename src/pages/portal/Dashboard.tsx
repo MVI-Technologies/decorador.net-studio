@@ -201,12 +201,12 @@ function ClientZeroState() {
         </Link>
         <Link
           to="/comecar/consultoria"
-          className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-blue-300/20 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:border-blue-400/50 hover:shadow-md hover:-translate-y-1"
+          className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-status-info/20 bg-status-info/5 p-6 transition-all hover:border-status-info/50 hover:shadow-md hover:-translate-y-1"
         >
           <span className="text-4xl"><Emoji>💬</Emoji></span>
           <span className="text-sm font-bold text-foreground">Consultoria</span>
           <span className="text-xs text-muted-foreground text-center">Ideias, orientação e recomendações</span>
-          <span className="text-xs font-semibold text-blue-600 group-hover:gap-2 flex items-center gap-1 transition-all">
+          <span className="text-xs font-semibold text-status-info group-hover:gap-2 flex items-center gap-1 transition-all">
             Começar →
           </span>
         </Link>
