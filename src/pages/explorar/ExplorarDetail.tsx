@@ -145,7 +145,7 @@ export default function ExplorarDetail() {
                         </p>
                         {(prof.averageRating != null || (prof.reviewCount ?? 0) > 0) && (
                           <div className="flex items-center gap-1 text-sm text-white/70">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                            <Star className="h-3.5 w-3.5 fill-status-warning text-status-warning" />
                             {prof.averageRating?.toFixed(1)} ({prof.reviewCount ?? 0} avaliações)
                           </div>
                         )}

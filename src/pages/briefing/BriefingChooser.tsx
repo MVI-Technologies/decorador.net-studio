@@ -40,9 +40,9 @@ const options = [
     ],
     cta: "Pedir consultoria →",
     to: "/comecar/consultoria",
-    gradient: "from-blue-500/10 to-cyan-500/5",
-    border: "border-blue-300/30 hover:border-blue-400/60",
-    badgeColor: "bg-blue-50 text-blue-600",
+    gradient: "from-status-info/10 to-status-info/5",
+    border: "border-status-info/30 hover:border-status-info/60",
+    badgeColor: "bg-status-info/10 text-status-info",
     time: "~3 min",
   },
 ];

@@ -37,14 +37,12 @@ export default function AssinaturaProfissional() {
       setSubmitting(true);
       const { data } = await api.post<SubscribeResponse>("/subscriptions/subscribe");
       
-      // O interceptor global do Axios já desembrulha { statusCode, message, data }
       const url = data?.checkoutUrl;
       if (!url) {
         toast.error("Link de pagamento não retornado pelo servidor. Tente novamente.");
         return;
       }
       
-      // Abre o checkout do Mercado Pago em nova aba
       window.open(url, "_blank");
       toast.success("Redirecionando para o Mercado Pago...");
     } catch (error: any) {
@@ -68,23 +66,23 @@ export default function AssinaturaProfissional() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Mensalidade da Plataforma</h1>
-        <p className="text-gray-400">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Mensalidade da Plataforma</h1>
+        <p className="text-muted-foreground">
           Para aceitar projetos, iniciar conversas e ter visibilidade, você precisa estar com a sua assinatura mensal ativa.
         </p>
       </div>
 
-      <div className="bg-[#1A1F2C] border border-[#2A2F3C] rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-[#2A2F3C]">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Status Atual</h2>
+            <h2 className="text-xl font-semibold text-foreground">Status Atual</h2>
             {isUpToDate ? (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-status-success/10 text-status-success border border-status-success/20">
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Ativa
               </span>
             ) : (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-destructive/10 text-destructive border border-destructive/20">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 {status?.status === "PAST_DUE" ? "Pendente" : "Inativa"}
               </span>
@@ -92,7 +90,7 @@ export default function AssinaturaProfissional() {
           </div>
 
           {!isUpToDate && (
-            <Alert variant="destructive" className="bg-rose-500/10 border-rose-500/20 text-rose-400">
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Atenção</AlertTitle>
               <AlertDescription>
@@ -102,29 +100,28 @@ export default function AssinaturaProfissional() {
           )}
 
           {isUpToDate && status?.expiresAt && (
-            <div className="mt-4 text-sm text-gray-400">
-              Próxima cobrança programada para: <span className="text-white font-medium">{format(new Date(status.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+            <div className="mt-4 text-sm text-muted-foreground">
+              Próxima cobrança programada para: <span className="text-foreground font-medium">{format(new Date(status.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
             </div>
           )}
         </div>
 
-        <div className="p-6 bg-[#1A1F2C]/50">
-          <h3 className="text-lg font-medium text-white mb-4">Plano Assinatura Mensal</h3>
+        <div className="p-6 bg-muted/30">
+          <h3 className="text-lg font-medium text-foreground mb-4">Plano Assinatura Mensal</h3>
           
-          <div className="flex items-center justify-between p-4 rounded-lg bg-[#2A2F3C]/50 border border-[#3A3F4C] mb-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-card border border-border mb-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <CreditCard className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <div className="font-semibold text-white">Decorador Premium</div>
-                <div className="text-sm text-gray-400">Cobrado mensalmente via Mercado Pago</div>
+                <div className="font-semibold text-foreground">Decorador Premium</div>
+                <div className="text-sm text-muted-foreground">Cobrado mensalmente via Mercado Pago</div>
               </div>
             </div>
-            {/* O valor seria melhor vir do backend, mas simplificaremos para a interface no momento */}
             <div className="text-right">
-              <div className="text-2xl font-bold text-white">R$ 21<span className="text-lg text-gray-400">,90</span></div>
-              <div className="text-sm text-gray-400">/ mês</div>
+              <div className="text-2xl font-bold text-foreground">R$ 21<span className="text-lg text-muted-foreground">,90</span></div>
+              <div className="text-sm text-muted-foreground">/ mês</div>
             </div>
           </div>
 
@@ -137,7 +134,7 @@ export default function AssinaturaProfissional() {
             {isUpToDate ? "Assinatura Ativa" : "Assinar Agora"}
           </Button>
 
-          <p className="mt-4 text-xs text-center text-gray-500">
+          <p className="mt-4 text-xs text-center text-muted-foreground">
             Pagamento seguro processado pelo Mercado Pago. Você será redirecionado para concluir a assinatura.
           </p>
         </div>

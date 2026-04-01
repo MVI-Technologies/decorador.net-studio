@@ -105,15 +105,15 @@ export function ProposalForm({ projectId, open, onOpenChange }: ProposalFormProp
                 const discount = num * (platformFeePercentage / 100);
                 const finalAmount = num - discount;
                 return (
-                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 pr-4 text-sm text-amber-900">
-                    <p className="flex items-center gap-2 font-medium mb-1">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
+                  <div className="mt-3 rounded-lg border border-status-warning/20 bg-status-warning/10 p-3 pr-4 text-sm">
+                    <p className="flex items-center gap-2 font-medium mb-1 text-foreground">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-status-warning" />
                       Resumo da sua proposta
                     </p>
-                    <ul className="space-y-1 ml-6 text-xs text-amber-800 list-disc">
-                      <li><strong>Valor enviado ao cliente:</strong> R$ {num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
-                      <li><strong>Taxa da plataforma ({platformFeePercentage}%):</strong> - R$ {discount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
-                      <li className="pt-1 mt-1 font-bold border-t border-amber-200/50">Você receberá livre: R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                    <ul className="space-y-1 ml-6 text-xs text-muted-foreground list-disc">
+                      <li><strong className="text-foreground">Valor enviado ao cliente:</strong> R$ {num.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                      <li><strong className="text-foreground">Taxa da plataforma ({platformFeePercentage}%):</strong> - R$ {discount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
+                      <li className="pt-1 mt-1 font-bold border-t border-border text-foreground">Você receberá livre: R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</li>
                     </ul>
                   </div>
                 );

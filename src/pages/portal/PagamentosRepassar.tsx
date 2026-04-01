@@ -45,10 +45,10 @@ export default function PagamentosRepassar() {
         Pagamentos já recebidos (em escrow). Após repassar ao profissional fora do sistema, marque como pago.
       </p>
 
-      <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 p-4 flex items-start gap-3 text-amber-800">
-        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-        <p className="text-sm">
-          <strong>Aviso de Prazo:</strong> O repasse referente aos projetos finalizados deve ser efetuado na conta bancária do profissional em até <strong>7 dias úteis</strong>. Fique atento aos prazos para evitar atrasos.
+      <div className="mt-4 rounded-md bg-status-warning/10 border border-status-warning/20 p-4 flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-status-warning" />
+        <p className="text-sm text-muted-foreground">
+          <strong className="text-foreground">Aviso de Prazo:</strong> O repasse referente aos projetos finalizados deve ser efetuado na conta bancária do profissional em até <strong className="text-foreground">7 dias úteis</strong>. Fique atento aos prazos para evitar atrasos.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export default function PagamentosRepassar() {
                       <span className="font-medium text-foreground break-all">{payment.professionalPixKey}</span>
                     </p>
                   ) : (
-                    <p className="text-sm text-amber-600 dark:text-amber-500">
+                    <p className="text-sm text-status-warning">
                       Chave PIX não cadastrada. Peça ao profissional para cadastrar a chave PIX no perfil.
                     </p>
                   )}
@@ -108,7 +108,7 @@ export default function PagamentosRepassar() {
                       if (daysPassed >= 7) {
                         return <p className="text-xs font-semibold text-destructive mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Atenção: Repasse pendente há {daysPassed} dias (limite próximo ou excedido!)</p>
                       } else if (daysPassed >= 5) {
-                        return <p className="text-xs font-semibold text-amber-600 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Fique atento: Repasse pendente há {daysPassed} dias.</p>
+                        return <p className="text-xs font-semibold text-status-warning mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Fique atento: Repasse pendente há {daysPassed} dias.</p>
                       }
                       return null;
                     })()}
