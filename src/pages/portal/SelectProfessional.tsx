@@ -229,9 +229,9 @@ export default function SelectProfessional() {
 
       {/* ── Estado: profissional já selecionado ────────────────────── */}
       {alreadySelected && (
-        <Card className="mb-8 max-w-2xl border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30">
+        <Card className="mb-8 max-w-2xl border-2 border-status-success/20 bg-status-success/10">
           <CardContent className="flex items-start gap-4 p-6">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-status-success" />
             <div className="flex-1">
               <p className="font-semibold text-foreground">
                 {project?.status === "IN_PROGRESS"
@@ -363,7 +363,7 @@ export default function SelectProfessional() {
                         )}
                         {prof?.averageRating != null && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <Star className="h-3 w-3 fill-status-warning text-status-warning" />
                             <span>
                               {prof.averageRating.toFixed(1)}
                               {prof.reviewCount

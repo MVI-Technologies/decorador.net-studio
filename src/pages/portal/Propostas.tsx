@@ -21,10 +21,10 @@ const proposalStatusLabel: Record<Proposal["status"], string> = {
 function ProposalBlock({ proposal }: { proposal: Proposal }) {
   const status = String(proposal.status).toUpperCase() as Proposal["status"];
   const statusColor = {
-    PENDING: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
-    ACCEPTED: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
-    DECLINED: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
-    NEGOTIATING: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+    PENDING: "bg-status-warning/10 border-status-warning/20",
+    ACCEPTED: "bg-status-success/10 border-status-success/20",
+    DECLINED: "bg-destructive/10 border-destructive/20",
+    NEGOTIATING: "bg-status-info/10 border-status-info/20",
   }[status] ?? "bg-muted/50 border-border";
 
   return (

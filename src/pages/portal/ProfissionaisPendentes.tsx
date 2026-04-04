@@ -87,7 +87,7 @@ export default function ProfissionaisPendentes() {
                     </p>
                     <p className="text-xs text-muted-foreground">{prof.user?.email}</p>
                     {prof.instagram && (
-                      <p className="text-xs font-medium text-pink-600 dark:text-pink-400 mt-0.5">
+                      <p className="text-xs font-medium text-primary mt-0.5">
                         @{prof.instagram.replace('@', '')}
                       </p>
                     )}

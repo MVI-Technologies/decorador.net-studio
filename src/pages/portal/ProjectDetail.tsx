@@ -72,7 +72,7 @@ function BriefingSummaryCard({ project, isClient }: { project: Project; isClient
           </span>
         )}
         {isConsultoria && (
-          <span className="ml-2 rounded-full border border-blue-300/40 bg-blue-50 px-2 py-0.5 text-xs text-blue-600 font-medium">
+          <span className="ml-2 rounded-full border border-status-info/30 bg-status-info/10 px-2 py-0.5 text-xs text-status-info font-medium">
             Consultoria 💬
           </span>
         )}
@@ -146,11 +146,11 @@ function AwaitingPaymentBanner({
   const hasCheckoutUrl = !!project.paymentCheckoutUrl;
 
   return (
-    <Card className="mt-6 max-w-2xl border-2 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+    <Card className="mt-6 max-w-2xl border-2 border-status-warning/20 bg-status-warning/10">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
-            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-warning/20">
+            <Clock className="h-5 w-5 text-status-warning" />
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-foreground">
@@ -163,7 +163,7 @@ function AwaitingPaymentBanner({
             </p>
 
             {project.price && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white dark:bg-amber-900/30 px-3 py-1.5 text-sm dark:border-amber-700">
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-status-warning/20 bg-white px-3 py-1.5 text-sm">
                 <span className="text-muted-foreground">Valor:</span>
                 <span className="font-bold text-foreground">
                   {project.price.toLocaleString("pt-BR", {
@@ -227,10 +227,10 @@ function AwaitingPaymentBanner({
 
 function ProfessionalAwaitingPaymentBanner() {
   return (
-    <Card className="mt-8 max-w-xl border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20">
+    <Card className="mt-8 max-w-xl border-2 border-status-warning/20 bg-status-warning/10">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <UserCheck className="h-5 w-5 text-amber-600" />
+          <UserCheck className="h-5 w-5 text-status-warning" />
           Você foi selecionado para este projeto
         </CardTitle>
         <CardDescription>
@@ -420,9 +420,9 @@ export default function ProjectDetail() {
   // Badge color
   const statusBadgeClass =
     status === "AWAITING_PAYMENT"
-      ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+      ? "border-status-warning/30 bg-status-warning/10 text-status-warning"
       : status === "IN_PROGRESS"
-      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+      ? "border-status-success/30 bg-status-success/10 text-status-success"
       : undefined;
 
   return (

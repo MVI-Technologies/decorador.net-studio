@@ -314,10 +314,10 @@ function ProposalCard({
   const isDeclined = proposal.status === "DECLINED";
 
   const statusColor = {
-    PENDING: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800",
-    ACCEPTED: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
-    DECLINED: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
-    NEGOTIATING: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+    PENDING: "bg-status-warning/10 border-status-warning/20",
+    ACCEPTED: "bg-status-success/10 border-status-success/20",
+    DECLINED: "bg-destructive/10 border-destructive/20",
+    NEGOTIATING: "bg-status-info/10 border-status-info/20",
   }[proposal.status];
 
   return (
@@ -333,9 +333,9 @@ function ProposalCard({
           variant="outline"
           className={cn(
             "text-xs",
-            isPending && "border-amber-400 text-amber-700",
-            isAccepted && "border-emerald-400 text-emerald-700",
-            isDeclined && "border-red-400 text-red-700"
+            isPending && "border-status-warning/50 text-status-warning",
+            isAccepted && "border-status-success/50 text-status-success",
+            isDeclined && "border-destructive/50 text-destructive"
           )}
         >
           {isPending
@@ -714,19 +714,19 @@ export function ChatPanel({ projectId, project, className, isActive = true }: Ch
       </div>
 
       {/* Educational Banner - Funcionalidade 2 */}
-      <div className="flex items-center gap-3 border-b border-border bg-yellow-50/80 px-4 py-3 dark:bg-yellow-950/20">
-        <Shield className="h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-500" />
-        <div className="text-sm text-yellow-800 dark:text-yellow-400">
-          <p className="font-semibold">Proteja-se contra fraudes</p>
-          <p>Para sua segurança, evite compartilhar contatos externos. Todas as conversas devem ocorrer dentro da plataforma.</p>
+      <div className="flex items-center gap-3 border-b border-border bg-status-warning/10 px-4 py-3">
+        <Shield className="h-5 w-5 shrink-0 text-status-warning" />
+        <div className="text-sm text-status-warning">
+          <p className="font-semibold text-foreground">Proteja-se contra fraudes</p>
+          <p className="text-muted-foreground">Para sua segurança, evite compartilhar contatos externos. Todas as conversas devem ocorrer dentro da plataforma.</p>
         </div>
       </div>
 
       {/* Awaiting proposal banner */}
       {showMatchingStatus && (
-        <div className="flex items-center gap-3 border-b border-border bg-amber-50 px-4 py-3 dark:bg-amber-950/20">
-          <Clock className="h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-sm text-amber-700 dark:text-amber-400">
+        <div className="flex items-center gap-3 border-b border-border bg-status-warning/10 px-4 py-3">
+          <Clock className="h-4 w-4 shrink-0 text-status-warning" />
+          <p className="text-sm text-status-warning">
             {isClient
               ? "Aguardando proposta do decorador. Ele já tem acesso ao seu briefing."
               : "O cliente está aguardando sua proposta. Clique em \"Enviar proposta\" quando estiver pronto."}
