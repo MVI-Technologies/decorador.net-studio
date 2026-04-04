@@ -60,10 +60,13 @@ export function AppLayout() {
   const nav = user ? getNav(user.role) : [];
 
   const isProfessional = user?.role === "PROFESSIONAL";
-  const isInactiveProfessional = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE" && professionalProfile?.subscriptionStatus !== "PAST_DUE" && professionalProfile?.status !== "PENDING_APPROVAL"; // PENDING_APPROVAL handles its own block or is allowed to browse? Wait, if they are APPROVED but not ACTIVE. Actually, let's just use "ACTIVE" for paid.
+  const isInactiveProfessional = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE" && professionalProfile?.subscriptionStatus !== "PAST_DUE" && professionalProfile?.status !== "PENDING_APPROVAL"; 
   
-  // Mas se for apenas "INACTIVE" ou "CANCELED" ou "PAST_DUE", bloqueia dependendo da lógica. Assumindo que subscriptionStatus ACTIVE é o único permitido.
-  const isBlocked = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE";
+  const isExpired = isProfessional && professionalProfile?.subscriptionExpiresAt 
+    ? new Date(professionalProfile.subscriptionExpiresAt) < new Date() 
+    : false;
+
+  const isBlocked = isProfessional && (professionalProfile?.subscriptionStatus !== "ACTIVE" || isExpired);
   
   const inAllowedInactiveRoute = location.pathname.includes('/app/assinatura') || 
                                  location.pathname.includes('/app/pagamentos') ||

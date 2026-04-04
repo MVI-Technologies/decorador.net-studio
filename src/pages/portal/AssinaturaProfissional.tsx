@@ -118,7 +118,7 @@ export default function AssinaturaProfissional() {
               </div>
               <div>
                 <div className="font-semibold text-white">Decorador Premium</div>
-                <div className="text-sm text-gray-400">Cobrado mensalmente via Mercado Pago</div>
+                <div className="text-sm text-gray-400">Aceita PIX, Cartão e Boleto através do Mercado Pago</div>
               </div>
             </div>
             <div className="text-right">
@@ -135,11 +135,11 @@ export default function AssinaturaProfissional() {
             className="w-full text-lg h-12"
           >
             {submitting && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
-            {isUpToDate ? "Assinatura Ativa" : "Assinar Agora"}
+            {isUpToDate ? "Assinatura Ativa" : "Pagar Mensalidade"}
           </Button>
 
           <p className="mt-4 text-xs text-center text-gray-500">
-            Pagamento seguro processado pelo Mercado Pago. Você será redirecionado para concluir a assinatura.
+            Pagamento seguro processado pelo Mercado Pago. Renovação feita por este painel a cada mês.
           </p>
         </div>
       </div>
