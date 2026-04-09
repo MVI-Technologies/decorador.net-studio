@@ -43,6 +43,7 @@ import ProjetosDisponiveis from "./pages/portal/ProjetosDisponiveis";
 import SelectProfessional from "./pages/portal/SelectProfessional";
 import MercadoPagoReturn from "./pages/portal/MercadoPagoReturn";
 import AssinaturaProfissional from "./pages/portal/AssinaturaProfissional";
+import AssinaturaRetorno from "./pages/portal/AssinaturaRetorno";
 import ConfiguracoesPlataforma from "./pages/portal/ConfiguracoesPlataforma";
 
 const queryClient = new QueryClient();
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="projetos/:id/pronto" element={<DeliveryResult />} />
               <Route path="meu-perfil" element={<MeuPerfil />} />
               <Route path="assinatura" element={<ProtectedRoute allowedRoles={["PROFESSIONAL"]}><AssinaturaProfissional /></ProtectedRoute>} />
+              <Route path="assinatura/retorno" element={<ProtectedRoute allowedRoles={["PROFESSIONAL"]}><AssinaturaRetorno /></ProtectedRoute>} />
               <Route path="pagamentos" element={<Pagamentos />} />
               <Route path="configuracoes-pix" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ConfiguracoesPix /></ProtectedRoute>} />
               <Route path="configuracoes-plataforma" element={<ProtectedRoute allowedRoles={["ADMIN"]}><ConfiguracoesPlataforma /></ProtectedRoute>} />
