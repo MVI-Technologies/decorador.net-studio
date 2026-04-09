@@ -375,3 +375,9 @@ export interface SubscriptionStatusResponse {
 export interface SubscribeResponse {
   checkoutUrl: string;
 }
+
+/** Resposta de GET /subscriptions/verify/:preapprovalId */
+export interface VerifySubscriptionResponse {
+  status: ProfessionalSubscriptionStatus;
+  message?: string;
+}
