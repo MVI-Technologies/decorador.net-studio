@@ -3,16 +3,16 @@
  *
  * Página de retorno após o checkout de assinatura do Mercado Pago.
  * O MP redireciona o profissional para esta rota após o checkout:
- *   https://app.decorador.net/app/assinatura/retorno?preapproval_id=XXX&status=authorized
+ *   /app/assinatura/retorno?origin=success&payment_id=123&status=approved&...
  *
  * Fluxo:
- *   1. Lê preapproval_id e status da URL
- *   2. Chama GET /subscriptions/verify/:preapprovalId para ativação imediata
- *   3. Faz polling em GET /subscriptions/status até confirmar ACTIVE
+ *   1. Lê payment_id e status da URL (injetados pelo MP automaticamente)
+ *   2. Chama GET /subscriptions/verify-payment?payment_id=xxx para ativação imediata
+ *   3. Faz polling em GET /subscriptions/status até confirmar ACTIVE (fallback)
  *   4. Exibe feedback visual e CTA para voltar à página de assinatura
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -29,45 +29,68 @@ import type { SubscriptionStatusResponse, VerifySubscriptionResponse } from "@/t
 
 export default function AssinaturaRetorno() {
   const [searchParams] = useSearchParams();
-  const preapprovalId = searchParams.get("preapproval_id");
-  const urlStatus = searchParams.get("status"); // authorized | pending | cancelled
+
+  // O MP injeta esses query params na URL de retorno automaticamente
+  const paymentId =
+    searchParams.get("payment_id") ||
+    searchParams.get("collection_id") ||
+    searchParams.get("preapproval_id");
+  const origin = searchParams.get("origin"); // success | failure | pending (nosso param)
+  const collectionStatus =
+    searchParams.get("collection_status") ||
+    searchParams.get("status"); // approved | pending | null
 
   const [verifyDone, setVerifyDone] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<VerifySubscriptionResponse | null>(null);
   const [verifyError, setVerifyError] = useState(false);
+  const hasTriedVerify = useRef(false);
 
-  // 1. Chamar verify imediatamente ao montar (uma única vez)
+  // 1. Chamar verify-payment imediatamente ao montar (uma única vez)
   useEffect(() => {
-    if (!preapprovalId) {
+    // Se não tem paymentId ou já foi cancelado/falha, não tenta verificar
+    if (!paymentId || origin === "failure") {
       setVerifyDone(true);
       return;
     }
 
+    // Prevenir chamadas duplas em React.StrictMode
+    if (hasTriedVerify.current) return;
+    hasTriedVerify.current = true;
+
     api
-      .get<VerifySubscriptionResponse>(`/subscriptions/verify/${preapprovalId}`)
-      .then(() => setVerifyDone(true))
-      .catch(() => {
+      .get<VerifySubscriptionResponse>(`/subscriptions/verify-payment`, {
+        params: { payment_id: paymentId },
+      })
+      .then((res) => {
+        setVerifyResult(res.data);
+        setVerifyDone(true);
+      })
+      .catch((err) => {
+        console.error("[AssinaturaRetorno] Erro no verify-payment:", err);
         setVerifyError(true);
         setVerifyDone(true);
       });
-  }, [preapprovalId]);
+  }, [paymentId, origin]);
 
-  // 2. Polling no status até ACTIVE (máximo 60s)
+  // 2. Polling no status até ACTIVE (fallback para quando o verify-payment
+  //    não ativou imediatamente — ex: PIX ainda pendente)
   const { data: statusData } = useQuery({
     queryKey: ["subscription-status-return"],
     queryFn: async () => {
       const res = await api.get<SubscriptionStatusResponse>("/subscriptions/status");
       return res.data;
     },
-    enabled: verifyDone,
+    enabled: verifyDone && !verifyResult?.activated && origin !== "failure",
     refetchInterval: (query) => {
       if (query.state.data?.status === "ACTIVE") return false;
-      return 5_000;
+      return 5_000; // 5 segundos
     },
     refetchIntervalInBackground: false,
   });
 
-  const isActive = statusData?.status === "ACTIVE";
-  const isCancelled = urlStatus === "cancelled" || urlStatus === "failure";
+  // Definitivo: ativo se o verify-payment confirmou OU se o polling achou ACTIVE
+  const isActive = verifyResult?.activated || statusData?.status === "ACTIVE";
+  const isCancelled = origin === "failure";
   const isPending = !isActive && !isCancelled;
 
   // ── Conteúdo dinâmico por estado ──────────────────────────────────────────
@@ -142,17 +165,25 @@ export default function AssinaturaRetorno() {
               </div>
             )}
 
+            {/* Erro no verify */}
+            {verifyError && !isActive && (
+              <div className="mt-6 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-left text-xs text-destructive">
+                Não foi possível verificar o pagamento automaticamente. Se você pagou, aguarde
+                alguns minutos — processaremos assim que o Mercado Pago confirmar.
+              </div>
+            )}
+
             {/* Metadata */}
-            {preapprovalId && (
+            {paymentId && (
               <div className="mt-6 rounded-xl bg-muted/50 p-4 text-left space-y-1.5 text-xs text-muted-foreground">
                 <div className="flex items-center justify-between">
-                  <span>ID da assinatura</span>
-                  <span className="font-mono font-medium text-foreground">{preapprovalId}</span>
+                  <span>ID do pagamento</span>
+                  <span className="font-mono font-medium text-foreground">{paymentId}</span>
                 </div>
-                {urlStatus && (
+                {collectionStatus && (
                   <div className="flex items-center justify-between">
                     <span>Status MP</span>
-                    <span className="font-medium text-foreground capitalize">{urlStatus}</span>
+                    <span className="font-medium text-foreground capitalize">{collectionStatus}</span>
                   </div>
                 )}
               </div>

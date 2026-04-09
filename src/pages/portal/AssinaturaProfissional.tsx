@@ -43,8 +43,9 @@ export default function AssinaturaProfissional() {
         return;
       }
       
-      window.open(url, "_blank");
+      // Redireciona na mesma janela — o MP retorna via back_url para /app/assinatura/retorno
       toast.success("Redirecionando para o Mercado Pago...");
+      window.location.href = url;
     } catch (error: any) {
       console.error("Erro ao gerar link de assinatura", error);
       toast.error(error.response?.data?.message || "Erro ao gerar link de pagamento.");

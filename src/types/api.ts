@@ -376,8 +376,10 @@ export interface SubscribeResponse {
   checkoutUrl: string;
 }
 
-/** Resposta de GET /subscriptions/verify/:preapprovalId */
+/** Resposta de GET /subscriptions/verify-payment?payment_id=xxx */
 export interface VerifySubscriptionResponse {
-  status: ProfessionalSubscriptionStatus;
-  message?: string;
+  activated: boolean;
+  alreadyActive?: boolean;
+  status?: string;
+  expiresAt?: string;
 }
