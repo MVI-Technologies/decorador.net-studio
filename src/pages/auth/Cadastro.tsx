@@ -63,7 +63,11 @@ export default function Cadastro() {
         role: values.role,
         phone: values.phone || undefined,
       });
-      toast.success("Cadastro realizado! Faça login para continuar.");
+      if (values.role === "PROFESSIONAL") {
+        toast.success("Cadastro realizado! Seu perfil está em análise pelo admin da plataforma.");
+      } else {
+        toast.success("Cadastro realizado! Faça login para continuar.");
+      }
       window.location.replace("/login");
     } catch (err) {
       toast.error(getApiErrorMessage(err));

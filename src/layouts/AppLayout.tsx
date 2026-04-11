@@ -60,13 +60,12 @@ export function AppLayout() {
   const nav = user ? getNav(user.role) : [];
 
   const isProfessional = user?.role === "PROFESSIONAL";
-  const isInactiveProfessional = isProfessional && professionalProfile?.subscriptionStatus !== "ACTIVE" && professionalProfile?.subscriptionStatus !== "PAST_DUE" && professionalProfile?.status !== "PENDING_APPROVAL"; 
   
-  const isExpired = isProfessional && professionalProfile?.subscriptionExpiresAt 
+  const isExpired = isProfessional && professionalProfile && professionalProfile.subscriptionExpiresAt 
     ? new Date(professionalProfile.subscriptionExpiresAt) < new Date() 
     : false;
 
-  const isBlocked = isProfessional && (professionalProfile?.subscriptionStatus !== "ACTIVE" || isExpired);
+  const isBlocked = isProfessional && professionalProfile && (professionalProfile.subscriptionStatus !== "ACTIVE" || isExpired);
   
   const inAllowedInactiveRoute = location.pathname.includes('/app/assinatura') || 
                                  location.pathname.includes('/app/pagamentos') ||
